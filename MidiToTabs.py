@@ -133,8 +133,8 @@ def main():
         y_values = [start[1], end[1]]
         ax.plot(x_values, y_values, marker = 'o', linestyle='-')
     # Set axis labels
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Note')
+    ax.set_xlabel('Time (Seconds)')
+    ax.set_ylabel('Note (0-128)')
     ax.set_title('Plot of MIDI Data')
     plot.show()
     return 0

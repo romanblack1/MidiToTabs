@@ -25,8 +25,19 @@ def song_to_tracks(song: MidiFile, dest: str):
 
     # Splitting Tracks and Writing Files to dest
     temp_song = MidiFile()
+    important_meta_messages = []
     for current_track in song.tracks:
-        temp_song.tracks.append(current_track)
+        for message in current_track:
+            # hard coding place to find important meta messages, todo: fix later after working on more midi files
+            # add speciifc meta messages to all tracks so that they play the correct tempo/key/etc.
+            if current_track.name == 'Blinding Lights (Demo)' and type(message) == mido.midifiles.meta.MetaMessage:
+                if message.type == 'key_signature' or \
+                        message.type == 'time_signature' or \
+                        message.type == 'smpte_offset' or \
+                        message.type == 'set_tempo':
+                    important_meta_messages.append(message)
+                    current_track.remove(message)
+        temp_song.tracks.append(important_meta_messages + current_track)
         temp_song.save(f'SplitTrackDepot\\{current_track.name}.mid')
         temp_song = MidiFile()
 

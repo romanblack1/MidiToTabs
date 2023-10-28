@@ -15,6 +15,19 @@ class Note:
     time: int
 
 
+@dataclass
+class GuitarNote:
+    string_name: str
+    string_index: int  # number 0-5, 0 representing the low e string
+    fret: int
+    start_time: int = 0
+
+
+@dataclass
+class Tab:
+    guitar_note_list: list
+
+
 # Clears the given directory from path of all files
 def clear_directory(path):
     for filename in os.listdir(path):
@@ -93,6 +106,9 @@ def create_notes(single_track):
     return notes_on, notes_off
 
 
+# Pairs up a note's on and off messages (represented as note
+# objects) into a singular tuple with the on note first and
+# the off note second
 def pair_up_notes(notes_on, notes_off):
     notes_on = sorted(notes_on, key=lambda x: x.name)
     notes_off = sorted(notes_off, key=lambda x: x.name)
@@ -114,8 +130,8 @@ def graph_track(paired_notes):
     note_graph_data = sorted(note_graph_data, key=lambda x: x[0][0])
 
     # Print graph data
-    #for note_graph_point in note_graph_data:
-    #    print(note_graph_point)
+    # for note_graph_point in note_graph_data:
+    #     print(note_graph_point)
 
     # Create graph
     _, ax = plot.subplots()
@@ -135,7 +151,48 @@ def graph_track(paired_notes):
     return
 
 
+def create_guitar_index():
+    low_e_string = (40, 57)
+    a_string = (45, 62)
+    d_string = (50, 67)
+    g_string = (55, 72)
+    b_string = (59, 76)
+    e_string = (64, 81)
+
+    guitar_index = {}
+    for note_num in range(40, 82):
+        string_fret_combo = []
+        if low_e_string[0] <= note_num <= low_e_string[1]:
+            string_fret_combo.append(GuitarNote("E", 0, note_num - low_e_string[0]))
+        if a_string[0] <= note_num <= a_string[1]:
+            string_fret_combo.append(GuitarNote("a", 1, note_num - a_string[0]))
+        if d_string[0] <= note_num <= d_string[1]:
+            string_fret_combo.append(GuitarNote("d", 2, note_num - d_string[0]))
+        if g_string[0] <= note_num <= g_string[1]:
+            string_fret_combo.append(GuitarNote("g", 3, note_num - g_string[0]))
+        if b_string[0] <= note_num <= b_string[1]:
+            string_fret_combo.append(GuitarNote("b", 4, note_num - b_string[0]))
+        if e_string[0] <= note_num <= e_string[1]:
+            string_fret_combo.append(GuitarNote("e", 5, note_num - e_string[0]))
+        guitar_index[note_num] = string_fret_combo
+
+    return guitar_index
+
+
+def translate_notes(paired_notes, guitar_index):
+    guitar_note_list = []
+    paired_notes = sorted(paired_notes, key=lambda x: x[0].time)
+    for paired_note in paired_notes:
+        potential_guitar_notes = guitar_index[paired_note[0].note]
+        # todo optimize note picked
+        guitar_note = potential_guitar_notes[0]
+        guitar_note_list.append(GuitarNote(guitar_note.string_name, guitar_note.string_index,
+                                           guitar_note.fret, paired_note[0].time))
+    return Tab(sorted(guitar_note_list, key=lambda x: x.start_time))
+
+
 def main():
+    guitar_index = create_guitar_index()
     # Read in our selected midi file
     blinding_lights = MidiFile('AUD_DS1340.mid', clip=True)
 
@@ -148,19 +205,24 @@ def main():
     # Print out info about messages within our single track
     # including whether it was a note on or off, what the note
     # was, and the message as a whole.
-    print(single_track)
+    # print(single_track)
 
     notes_on, notes_off = create_notes(single_track)
 
-    # Pair up the notesOn and notesOff that we collected
+    # Pair up the notes_on and notes_off that we collected
     paired_notes = pair_up_notes(notes_on, notes_off)
     
     # Print out all of the paired notes
-    for paired_note in paired_notes:
-        print(paired_note)
+    # for paired_note in paired_notes:
+    #     print(paired_note)
 
     # Graph the track
-    graph_track(paired_notes)
+    # graph_track(paired_notes)
+
+    guitar_notes = translate_notes(paired_notes, guitar_index)
+    for note in guitar_notes.guitar_note_list:
+        print(note)
+
     return 0
 
 

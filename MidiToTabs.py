@@ -60,22 +60,55 @@ def song_to_tracks(song: MidiFile, dest: str):
         temp_song = MidiFile()
 
 
-def pair_up_notes(notesOn, notesOff):
-    notesOn = sorted(notesOn, key=lambda x: x.name)
-    notesOff = sorted(notesOff, key=lambda x: x.name)
-    pairedNotes = []
-    if len(notesOn) == len(notesOff):
-        for x in range(len(notesOn)):
-            pairedNotes.append((notesOn[x], notesOff[x]))
-    return pairedNotes
+# Create notes from the given track
+def create_notes(single_track):
+    notes_on = []
+    notes_off = []
+    time_counter = 0
+    time_seconds = 0
+    for message in single_track:
+        try:
+            time_counter += message.time
+
+            # Calculate the correct time in seconds by doing MIDI Ticks * (Tempo / PPQ)
+            # In this case, we have tempo in microseconds, so we divide by 1000000
+            # to get tempo in seconds. 480 PPQ is found in the header of the MidiFile
+            # "ticks_per_beat" and tempo is found in a MetaMessage in the track
+            # named 'set_tempo' as the value tempo
+            time_seconds = time_counter * 350877 / 1000000 / 480
+        except Exception:
+            print("Message without time:" + message)
+        if type(message) == mido.midifiles.meta.MetaMessage:
+            continue
+        if message.type == "note_on":
+            temp_note = Note(note_number_to_name(message.note), message.note,
+                             True, message.velocity, message.channel, time_seconds)
+            notes_on.append(temp_note)
+        elif message.type == "note_off":
+            temp_note = Note(note_number_to_name(message.note), message.note,
+                             False, message.velocity, message.channel, time_seconds)
+            notes_off.append(temp_note)
+        else:
+            pass  # print("Not a Note!")
+    return notes_on, notes_off
 
 
-def graph_track(pairedNotes):
+def pair_up_notes(notes_on, notes_off):
+    notes_on = sorted(notes_on, key=lambda x: x.name)
+    notes_off = sorted(notes_off, key=lambda x: x.name)
+    paired__notes = []
+    if len(notes_on) == len(notes_off):
+        for x in range(len(notes_on)):
+            paired_notes.append((notes_on[x], notes_off[x]))
+    return paired_notes
+
+
+def graph_track(paired_notes):
     # Define data segments
     note_graph_data = []
-    for pairedNote in pairedNotes:
-        note_graph_data.append(((pairedNote[0].time, pairedNote[0].note),
-                                (pairedNote[1].time, pairedNote[1].note)))
+    for paired_note in paired_notes:
+        note_graph_data.append(((paired_note[0].time, paired_note[0].note),
+                                (paired_note[1].time, paired_note[1].note)))
 
     # Reordering so notes (as points) are in sequence
     note_graph_data = sorted(note_graph_data, key=lambda x: x[0][0])
@@ -105,52 +138,28 @@ def graph_track(pairedNotes):
 def main():
     # Read in our selected midi file
     blinding_lights = MidiFile('AUD_DS1340.mid', clip=True)
+
     # Split into tracks
     song_to_tracks(blinding_lights, 'SplitTrackDepot')
+
     # We are going to analyze one track within our song
     single_track = MidiFile('SplitTrackDepot/Vocal Guide.mid', clip=True).tracks[0]
+
     # Print out info about messages within our single track
     # including whether it was a note on or off, what the note
     # was, and the message as a whole.
     print(single_track)
-    # Now sort messages based on whether they are note_on or note_off
-    notesOn = []
-    notesOff = []
-    notes = []
-    time_counter = 0
-    time_seconds = 0
-    for message in single_track:
-        try:
-            time_counter += message.time
-            # Calculate the correct time in seconds by doing MIDI Ticks * (Tempo / PPQ)
-            # In this case, we have tempo in microseconds, so we divide by 1000000
-            # to get tempo in seconds. 480 PPQ is found in the header of the MidiFile
-            # "ticks_per_beat" and tempo is found in a MetaMessage in the track
-            # named 'set_tempo' as the value tempo
-            time_seconds = time_counter * 350877 / 1000000 / 480
-        except Exception:
-            print("Message without time:" + message)
-        if type(message) == mido.midifiles.meta.MetaMessage:
-            continue
-        if message.type == "note_on":
-            tempNote = Note(note_number_to_name(message.note), message.note,
-                            True, message.velocity, message.channel, time_seconds)
-            notesOn.append(tempNote)
-            notes.append(tempNote)
-        elif message.type == "note_off":
-            tempNote = Note(note_number_to_name(message.note), message.note,
-                            False, message.velocity, message.channel, time_seconds)
-            notesOff.append(tempNote)
-            notes.append(tempNote)
-        else:
-            pass  # print("Not a Note!")
+
+    notes_on, notes_off = create_notes(single_track)
+
     # Pair up the notesOn and notesOff that we collected
-    pairedNotes = pair_up_notes(notesOn, notesOff)
+    paired_notes = pair_up_notes(notes_on, notes_off)
+    
     # Print out all of the paired notes
-    for pairedNote in pairedNotes:
-        print(pairedNote)
+    for paired_note in paired_notes:
+        print(paired_note)
     # Graph the track
-    graph_track(pairedNotes)
+    graph_track(paired_notes)
     return 0
 
 

@@ -23,6 +23,11 @@ def clear_directory(path):
             os.remove(file_path)
 
 
+def print_note_range(paired_notes):
+    paired_notes = sorted(paired_notes, key=lambda x: x[0].note)
+    print("Min Note: " + str(paired_notes[0][0].note) + ". Max Note: " + str(paired_notes[-1][0].note))
+
+
 # Translates from MIDI note number (0-128) to name with octave and number
 def note_number_to_name(note_number):
     # Define a list of note names
@@ -161,6 +166,8 @@ def main():
 
     # Graph the track
     graph_track(paired_notes)
+
+    print_note_range(paired_notes)
     return 0
 
 

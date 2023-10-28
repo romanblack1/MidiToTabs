@@ -96,7 +96,7 @@ def create_notes(single_track):
 def pair_up_notes(notes_on, notes_off):
     notes_on = sorted(notes_on, key=lambda x: x.name)
     notes_off = sorted(notes_off, key=lambda x: x.name)
-    paired__notes = []
+    paired_notes = []
     if len(notes_on) == len(notes_off):
         for x in range(len(notes_on)):
             paired_notes.append((notes_on[x], notes_off[x]))
@@ -158,6 +158,7 @@ def main():
     # Print out all of the paired notes
     for paired_note in paired_notes:
         print(paired_note)
+
     # Graph the track
     graph_track(paired_notes)
     return 0

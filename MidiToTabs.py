@@ -54,6 +54,38 @@ def song_to_tracks(song: MidiFile, dest: str):
         temp_song = MidiFile()
 
 
+def graph_track(pairedNotes):
+    # Define data segments
+    note_graph_data = []
+    for pairedNote in pairedNotes:
+        note_graph_data.append(((pairedNote[0].time, pairedNote[0].note),
+                                (pairedNote[1].time, pairedNote[1].note)))
+
+    # Reordering so notes (as points) are in sequence
+    note_graph_data = sorted(note_graph_data, key=lambda x: x[0][0])
+
+    # Print graph data
+    #for note_graph_point in note_graph_data:
+    #    print(note_graph_point)
+
+    # Create graph
+    _, ax = plot.subplots()
+    ax.set_xlabel('Time (Seconds)')
+    ax.set_ylabel('Note (0-128)')
+    ax.set_title('Plot of MIDI Data')
+
+    # Plot each line segment on graph
+    for start, end in note_graph_data:
+        x_values = [start[0], end[0]]
+        y_values = [start[1], end[1]]
+        ax.plot(x_values, y_values, marker='o', linestyle='-')
+
+    # Show graph
+    plot.show()
+
+    return
+
+
 def main():
     # Read in our selected midi file
     blinding_lights = MidiFile('AUD_DS1340.mid', clip=True)
@@ -112,31 +144,6 @@ def main():
     # Print out all of the paired notes
     for pairedNote in pairedNotes:
         print(pairedNote)
-    # Graph visualization of our notes
-    note_graph_data = []
-    # Define data segments
-    for pairedNote in pairedNotes:
-        note_graph_data.append(((pairedNote[0].time, pairedNote[0].note),
-                                (pairedNote[1].time, pairedNote[1].note)))
-    # reordering so notes (as points) are in sequence
-    note_graph_data = sorted(note_graph_data, key=lambda x: x[0][0])
-    # showing just the first 10 notes
-    # note_graph_data = note_graph_data[:10]
-    # troubleshooting graph points
-    for note_graph_point in note_graph_data:
-        print(note_graph_point)
-    # Create new figure and axis
-    _, ax = plot.subplots()
-    # Plot each line segment
-    for start, end in note_graph_data:
-        x_values = [start[0], end[0]]
-        y_values = [start[1], end[1]]
-        ax.plot(x_values, y_values, marker = 'o', linestyle='-')
-    # Set axis labels
-    ax.set_xlabel('Time (Seconds)')
-    ax.set_ylabel('Note (0-128)')
-    ax.set_title('Plot of MIDI Data')
-    plot.show()
     return 0
 
 

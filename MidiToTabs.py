@@ -15,6 +15,7 @@ class Note:
     time: int
 
 
+# Clears the given directory from path of all files
 def clear_directory(path):
     for filename in os.listdir(path):
         file_path = os.path.join(path, filename)
@@ -22,6 +23,7 @@ def clear_directory(path):
             os.remove(file_path)
 
 
+# Translates from MIDI note number (0-128) to name with octave and number
 def note_number_to_name(note_number):
     # Define a list of note names
     note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -58,7 +60,8 @@ def song_to_tracks(song: MidiFile, dest: str):
         temp_song = MidiFile()
 
 
-def create_notes_from_track(single_track):
+# Create notes from the given track
+def create_notes(single_track):
     notes_on = []
     notes_off = []
     time_counter = 0
@@ -90,12 +93,22 @@ def create_notes_from_track(single_track):
     return notes_on, notes_off
 
 
+def pair_up_notes(notes_on, notes_off):
+    notes_on = sorted(notes_on, key=lambda x: x.name)
+    notes_off = sorted(notes_off, key=lambda x: x.name)
+    paired__notes = []
+    if len(notes_on) == len(notes_off):
+        for x in range(len(notes_on)):
+            paired_notes.append((notes_on[x], notes_off[x]))
+    return paired_notes
+
+
 def graph_track(paired_notes):
     # Define data segments
     note_graph_data = []
-    for pairedNote in paired_notes:
-        note_graph_data.append(((pairedNote[0].time, pairedNote[0].note),
-                                (pairedNote[1].time, pairedNote[1].note)))
+    for paired_note in paired_notes:
+        note_graph_data.append(((paired_note[0].time, paired_note[0].note),
+                                (paired_note[1].time, paired_note[1].note)))
 
     # Reordering so notes (as points) are in sequence
     note_graph_data = sorted(note_graph_data, key=lambda x: x[0][0])
@@ -137,23 +150,16 @@ def main():
     # was, and the message as a whole.
     print(single_track)
 
-    notes_on, notes_off = create_notes_from_track()
+    notes_on, notes_off = create_notes(single_track)
 
-    # Now that we have separated note_ons and note_offs we need to
-    # order them by what the note actually is, but maintain the
-    # sequencing for each note
-    notesOn = sorted(notesOn, key=lambda x: x.name)
-    notesOff = sorted(notesOff, key=lambda x: x.name)
-    # Now we can pair up each note on and note off in the sequence
-    # so that we know when a certain note starts and ends
-    pairedNotes = []
-    if len(notesOn) == len(notesOff):
-        for x in range(len(notesOn)):
-            pairedNotes.append((notesOn[x], notesOff[x]))
+    # Pair up the notesOn and notesOff that we collected
+    paired_notes = pair_up_notes(notes_on, notes_off)
+    
     # Print out all of the paired notes
-    for pairedNote in pairedNotes:
-        print(pairedNote)
-
+    for paired_note in paired_notes:
+        print(paired_note)
+    # Graph the track
+    graph_track(paired_notes)
     return 0
 
 

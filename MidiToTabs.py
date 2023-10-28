@@ -15,6 +15,7 @@ class Note:
     time: int
 
 
+# Clears the given directory from path of all files
 def clear_directory(path):
     for filename in os.listdir(path):
         file_path = os.path.join(path, filename)
@@ -22,6 +23,7 @@ def clear_directory(path):
             os.remove(file_path)
 
 
+# Translates from MIDI note number (0-128) to name with octave and number
 def note_number_to_name(note_number):
     # Define a list of note names
     note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -56,6 +58,16 @@ def song_to_tracks(song: MidiFile, dest: str):
         temp_song.tracks.append(important_meta_messages + current_track)
         temp_song.save(f'SplitTrackDepot\\{current_track.name}.mid')
         temp_song = MidiFile()
+
+
+def pair_up_notes(notesOn, notesOff):
+    notesOn = sorted(notesOn, key=lambda x: x.name)
+    notesOff = sorted(notesOff, key=lambda x: x.name)
+    pairedNotes = []
+    if len(notesOn) == len(notesOff):
+        for x in range(len(notesOn)):
+            pairedNotes.append((notesOn[x], notesOff[x]))
+    return pairedNotes
 
 
 def graph_track(pairedNotes):
@@ -132,21 +144,13 @@ def main():
             notes.append(tempNote)
         else:
             pass  # print("Not a Note!")
-    # Now that we have separated note_ons and note_offs we need to
-    # order them by what the note actually is, but maintain the
-    # sequencing for each note
-    notesOn = sorted(notesOn, key=lambda x: x.name)
-    notesOff = sorted(notesOff, key=lambda x: x.name)
-    # Now we can pair up each note on and note off in the sequence
-    # so that we know when a certain note starts and ends
-    pairedNotes = []
-    if len(notesOn) == len(notesOff):
-        for x in range(len(notesOn)):
-            pairedNotes.append((notesOn[x], notesOff[x]))
+    # Pair up the notesOn and notesOff that we collected
+    pairedNotes = pair_up_notes(notesOn, notesOff)
     # Print out all of the paired notes
     for pairedNote in pairedNotes:
         print(pairedNote)
-
+    # Graph the track
+    graph_track(pairedNotes)
     return 0
 
 

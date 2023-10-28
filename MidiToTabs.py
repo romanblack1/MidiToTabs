@@ -15,6 +15,13 @@ class Note:
     time: int
 
 
+def clear_directory(path):
+    for filename in os.listdir(path):
+        file_path = os.path.join(path, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
+
 def note_number_to_name(note_number):
     # Define a list of note names
     note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -30,10 +37,7 @@ def note_number_to_name(note_number):
 # track separately, saves them in the given dest
 def song_to_tracks(song: MidiFile, dest: str):
     # Clearing Destination of Midi Files
-    for filename in os.listdir(dest):
-        file_path = os.path.join(dest, filename)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
+    clear_directory(dest)
 
     # Splitting Tracks and Writing Files to dest
     temp_song = MidiFile()
@@ -85,11 +89,13 @@ def main():
         if type(message) == mido.midifiles.meta.MetaMessage:
             continue
         if message.type == "note_on":
-            tempNote = Note(note_number_to_name(message.note), message.note, True, message.velocity, message.channel, time_seconds)
+            tempNote = Note(note_number_to_name(message.note), message.note,
+                            True, message.velocity, message.channel, time_seconds)
             notesOn.append(tempNote)
             notes.append(tempNote)
         elif message.type == "note_off":
-            tempNote = Note(note_number_to_name(message.note), message.note, False, message.velocity, message.channel, time_seconds)
+            tempNote = Note(note_number_to_name(message.note), message.note,
+                            False, message.velocity, message.channel, time_seconds)
             notesOff.append(tempNote)
             notes.append(tempNote)
         else:
@@ -97,9 +103,6 @@ def main():
     # Now that we have separated note_ons and note_offs we need to
     # order them by what the note actually is, but maintain the
     # sequencing for each note
-    print("\n\n")
-    for note in notes:
-        print(note)
     notesOn = sorted(notesOn, key=lambda x: x.name)
     notesOff = sorted(notesOff, key=lambda x: x.name)
     # Now we can pair up each note on and note off in the sequence
@@ -108,7 +111,6 @@ def main():
     if len(notesOn) == len(notesOff):
         for x in range(len(notesOn)):
             pairedNotes.append((notesOn[x], notesOff[x]))
-    print("\n")
     # Print out all of the paired notes
     for pairedNote in pairedNotes:
         print(pairedNote)
@@ -121,7 +123,7 @@ def main():
     # reordering so notes (as points) are in sequence
     note_graph_data = sorted(note_graph_data, key=lambda x: x[0][0])
     # showing just the first 10 notes
-    # note_graph_data = note_graph_data[:10]
+    note_graph_data = note_graph_data[:10]
     # troubleshooting graph points
     for note_graph_point in note_graph_data:
         print(note_graph_point)

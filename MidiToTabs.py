@@ -1,3 +1,4 @@
+import math
 import os
 import mido
 from mido import MidiFile
@@ -13,7 +14,7 @@ class Note:
     velocity: int
     channel: int
     time: int
-    half_beat_index: int
+    quarter_beat_index: int
 
 
 @dataclass
@@ -22,7 +23,7 @@ class GuitarNote:
     string_index: int  # number 0-5, 0 representing the high e string
     fret: int
     start_time: int = 0
-    half_beat_index: int = 0
+    quarter_beat_index: int = 0
 
 
 @dataclass
@@ -101,11 +102,11 @@ def create_notes(single_track, ticks_to_seconds_ratio, seconds_per_beat):
             continue
         if message.type == "note_on":
             temp_note = Note(note_number_to_name(message.note), message.note,
-                             True, message.velocity, message.channel, time_seconds, round(2*time_seconds/seconds_per_beat))
+                             True, message.velocity, message.channel, time_seconds, round(4*time_seconds/seconds_per_beat))
             notes_on.append(temp_note)
         elif message.type == "note_off":
             temp_note = Note(note_number_to_name(message.note), message.note,
-                             False, message.velocity, message.channel, time_seconds, round(2*time_seconds/seconds_per_beat))
+                             False, message.velocity, message.channel, time_seconds, round(4*time_seconds/seconds_per_beat))
             notes_off.append(temp_note)
         else:
             pass  # print("Not a Note!")
@@ -194,32 +195,48 @@ def translate_notes(paired_notes, guitar_index):
         # todo optimize note picked
         guitar_note = potential_guitar_notes[0]
         guitar_note_list.append(GuitarNote(guitar_note.string_name, guitar_note.string_index,
-                                           guitar_note.fret, paired_note[0].time, paired_note[0].half_beat_index))
+                                           guitar_note.fret, paired_note[0].time, paired_note[0].quarter_beat_index))
     return Tab(sorted(guitar_note_list, key=lambda x: x.start_time))
 
 
-def print_tab(tab):
+def print_tab(tab, time_sig_numerator):
     guitar_strings = ["e| ", "b| ", "g| ", "d| ", "a| ", "E| "]
 
-    song_len = tab.guitar_note_list[-1].half_beat_index + 2
+    quarter_beats_per_measure = time_sig_numerator * 4
+    last_beat_index = tab.guitar_note_list[-1].quarter_beat_index
+    song_len = last_beat_index + quarter_beats_per_measure - (last_beat_index % quarter_beats_per_measure) + 1
     note_index = 0
-    for time_index in range(song_len):
+    for time_index in range(1, song_len):
         # to account for fret nums > 2 characters long (10-17), and no notes at this time tick
         max_string_len = len(guitar_strings[0]) + 1
         current_guitar_note = tab.guitar_note_list[note_index] if note_index < len(tab.guitar_note_list) else None
-        while current_guitar_note and current_guitar_note.half_beat_index == time_index:  # catches notes on this time tick
+        while current_guitar_note and current_guitar_note.quarter_beat_index == time_index:  # catches notes on this time tick
             fret = str(current_guitar_note.fret)
             guitar_strings[current_guitar_note.string_index] += fret
             max_string_len = max(max_string_len, len(guitar_strings[current_guitar_note.string_index]))
             note_index += 1
             current_guitar_note = tab.guitar_note_list[note_index] if note_index < len(tab.guitar_note_list) else None
 
-        for guitar_string in guitar_strings:
-            if len(guitar_string) < max_string_len:  # add dashes to strings that don't have notes at this time tick
-                guitar_string + "-" * (max_string_len - len(guitar_string))
+        for guitar_string_index in range(len(guitar_strings)):
+            # add dashes to strings that don't have notes at this time tick
+            if len(guitar_strings[guitar_string_index]) < max_string_len:
+                num_dashes = (max_string_len - len(guitar_strings[guitar_string_index]))
+                guitar_strings[guitar_string_index] += ("-" * num_dashes)
 
+        if time_index % quarter_beats_per_measure == 0:
+            for guitar_string_index in range(len(guitar_strings)):
+                guitar_strings[guitar_string_index] += "|"
+        if time_index % (quarter_beats_per_measure * 8) == 0:
+            print_tab_line(guitar_strings)
+            guitar_strings = ["e| ", "b| ", "g| ", "d| ", "a| ", "E| "]
+
+    print_tab_line(guitar_strings)
+
+
+def print_tab_line(guitar_strings):
     for guitar_string in guitar_strings:
         print(guitar_string)
+    print()
 
 
 def main():
@@ -227,18 +244,31 @@ def main():
 
     # Read in our selected midi file
     blinding_lights = MidiFile('AUD_DS1340.mid', clip=True)
-    print(blinding_lights)
-    print("\n\n\n")
+    # print(blinding_lights)
+    # print("\n\n\n")
 
     # Figure out the midi tick to seconds ratio
     tempo = 0
+    time_sig_numerator = 0
+    found_tempo = False
+    found_numerator = False
     for message in blinding_lights.tracks[0]:
         if type(message) == mido.midifiles.meta.MetaMessage:
             if message.type == 'set_tempo':
                 tempo = message.tempo
-                break
+                found_tempo = True
+                if found_tempo and found_numerator:
+                    break
+            if message.type == 'time_signature':
+                time_sig_numerator = message.numerator
+                found_numerator = True
+                if found_tempo and found_numerator:
+                    break
     ticks_to_seconds_ratio = tempo / 1000000 / blinding_lights.ticks_per_beat
     seconds_per_beat = blinding_lights.ticks_per_beat * ticks_to_seconds_ratio
+
+    # BPM of song
+    # print(math.pow(seconds_per_beat, -1) * 60)
 
     # Split into tracks
     song_to_tracks(blinding_lights, 'SplitTrackDepot')
@@ -261,15 +291,15 @@ def main():
     #     print(paired_note)
 
     # Graph the track
-    graph_track(paired_notes)
+    # graph_track(paired_notes)
 
     guitar_tab = translate_notes(paired_notes, guitar_index)
-    for note in guitar_tab.guitar_note_list:
-        print(note)
+    # for note in guitar_tab.guitar_note_list:
+    #     print(note)
 
-    print_note_range(paired_notes)
+    # print_note_range(paired_notes)
 
-    print_tab(guitar_tab)
+    print_tab(guitar_tab, time_sig_numerator)
 
     return 0
 

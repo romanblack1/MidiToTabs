@@ -206,7 +206,7 @@ def print_tab(tab):
     for time_index in range(song_len):
         # to account for fret nums > 2 characters long (10-17), and no notes at this time tick
         max_string_len = len(guitar_strings[0]) + 1
-        current_guitar_note = tab.guitar_note_list[note_index]
+        current_guitar_note = tab.guitar_note_list[note_index] if note_index < len(tab.guitar_note_list) else None
         while current_guitar_note and current_guitar_note.half_beat_index == time_index:  # catches notes on this time tick
             fret = str(current_guitar_note.fret)
             guitar_strings[current_guitar_note.string_index] += fret
@@ -263,11 +263,14 @@ def main():
     # Graph the track
     graph_track(paired_notes)
 
-    guitar_notes = translate_notes(paired_notes, guitar_index)
-    for note in guitar_notes.guitar_note_list:
+    guitar_tab = translate_notes(paired_notes, guitar_index)
+    for note in guitar_tab.guitar_note_list:
         print(note)
 
     print_note_range(paired_notes)
+
+    print_tab(guitar_tab)
+
     return 0
 
 

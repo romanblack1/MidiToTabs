@@ -13,6 +13,7 @@ class Note:
     velocity: int
     channel: int
     time: int
+    half_beat_index: int
 
 
 @dataclass
@@ -21,6 +22,7 @@ class GuitarNote:
     string_index: int  # number 0-5, 0 representing the low e string
     fret: int
     start_time: int = 0
+    half_beat_index: int = 0
 
 
 @dataclass
@@ -72,14 +74,13 @@ def song_to_tracks(song: MidiFile, dest: str):
                         message.type == 'smpte_offset' or \
                         message.type == 'set_tempo':
                     important_meta_messages.append(message)
-                    current_track.remove(message)
         temp_song.tracks.append(important_meta_messages + current_track)
         temp_song.save(f'SplitTrackDepot\\{current_track.name}.mid')
         temp_song = MidiFile()
 
 
 # Create notes from the given track
-def create_notes(single_track):
+def create_notes(single_track, ticks_to_seconds_ratio, seconds_per_beat):
     notes_on = []
     notes_off = []
     time_counter = 0
@@ -93,18 +94,18 @@ def create_notes(single_track):
             # to get tempo in seconds. 480 PPQ is found in the header of the MidiFile
             # "ticks_per_beat" and tempo is found in a MetaMessage in the track
             # named 'set_tempo' as the value tempo
-            time_seconds = time_counter * 350877 / 1000000 / 480
+            time_seconds = time_counter * ticks_to_seconds_ratio
         except Exception:
             print("Message without time:" + message)
         if type(message) == mido.midifiles.meta.MetaMessage:
             continue
         if message.type == "note_on":
             temp_note = Note(note_number_to_name(message.note), message.note,
-                             True, message.velocity, message.channel, time_seconds)
+                             True, message.velocity, message.channel, time_seconds, round(2*time_seconds/seconds_per_beat))
             notes_on.append(temp_note)
         elif message.type == "note_off":
             temp_note = Note(note_number_to_name(message.note), message.note,
-                             False, message.velocity, message.channel, time_seconds)
+                             False, message.velocity, message.channel, time_seconds, round(2*time_seconds/seconds_per_beat))
             notes_off.append(temp_note)
         else:
             pass  # print("Not a Note!")
@@ -192,14 +193,27 @@ def translate_notes(paired_notes, guitar_index):
         # todo optimize note picked
         guitar_note = potential_guitar_notes[0]
         guitar_note_list.append(GuitarNote(guitar_note.string_name, guitar_note.string_index,
-                                           guitar_note.fret, paired_note[0].time))
+                                           guitar_note.fret, paired_note[0].time, paired_note[0].half_beat_index))
     return Tab(sorted(guitar_note_list, key=lambda x: x.start_time))
 
 
 def main():
     guitar_index = create_guitar_index()
+
     # Read in our selected midi file
     blinding_lights = MidiFile('AUD_DS1340.mid', clip=True)
+    print(blinding_lights)
+    print("\n\n\n")
+
+    # Figure out the midi tick to seconds ratio
+    tempo = 0
+    for message in blinding_lights.tracks[0]:
+        if type(message) == mido.midifiles.meta.MetaMessage:
+            if message.type == 'set_tempo':
+                tempo = message.tempo
+                break
+    ticks_to_seconds_ratio = tempo / 1000000 / blinding_lights.ticks_per_beat
+    seconds_per_beat = blinding_lights.ticks_per_beat * ticks_to_seconds_ratio
 
     # Split into tracks
     song_to_tracks(blinding_lights, 'SplitTrackDepot')
@@ -212,7 +226,7 @@ def main():
     # was, and the message as a whole.
     # print(single_track)
 
-    notes_on, notes_off = create_notes(single_track)
+    notes_on, notes_off = create_notes(single_track, ticks_to_seconds_ratio, seconds_per_beat)
 
     # Pair up the notes_on and notes_off that we collected
     paired_notes = pair_up_notes(notes_on, notes_off)
@@ -222,7 +236,7 @@ def main():
     #     print(paired_note)
 
     # Graph the track
-    # graph_track(paired_notes)
+    graph_track(paired_notes)
 
     guitar_notes = translate_notes(paired_notes, guitar_index)
     for note in guitar_notes.guitar_note_list:

@@ -19,7 +19,7 @@ class Note:
 @dataclass
 class GuitarNote:
     string_name: str
-    string_index: int  # number 0-5, 0 representing the low e string
+    string_index: int  # number 0-5, 0 representing the high e string
     fret: int
     start_time: int = 0
     half_beat_index: int = 0
@@ -168,18 +168,19 @@ def create_guitar_index():
     guitar_index = {}
     for note_num in range(40, 82):
         string_fret_combo = []
-        if low_e_string[0] <= note_num <= low_e_string[1]:
-            string_fret_combo.append(GuitarNote("E", 0, note_num - low_e_string[0]))
-        if a_string[0] <= note_num <= a_string[1]:
-            string_fret_combo.append(GuitarNote("a", 1, note_num - a_string[0]))
-        if d_string[0] <= note_num <= d_string[1]:
-            string_fret_combo.append(GuitarNote("d", 2, note_num - d_string[0]))
-        if g_string[0] <= note_num <= g_string[1]:
-            string_fret_combo.append(GuitarNote("g", 3, note_num - g_string[0]))
-        if b_string[0] <= note_num <= b_string[1]:
-            string_fret_combo.append(GuitarNote("b", 4, note_num - b_string[0]))
         if e_string[0] <= note_num <= e_string[1]:
-            string_fret_combo.append(GuitarNote("e", 5, note_num - e_string[0]))
+            string_fret_combo.append(GuitarNote("e", 0, note_num - e_string[0]))
+        if b_string[0] <= note_num <= b_string[1]:
+            string_fret_combo.append(GuitarNote("b", 1, note_num - b_string[0]))
+        if g_string[0] <= note_num <= g_string[1]:
+            string_fret_combo.append(GuitarNote("g", 2, note_num - g_string[0]))
+        if low_e_string[0] <= note_num <= low_e_string[1]:
+            string_fret_combo.append(GuitarNote("d", 3, note_num - d_string[0]))
+        if a_string[0] <= note_num <= a_string[1]:
+            string_fret_combo.append(GuitarNote("a", 4, note_num - a_string[0]))
+        if d_string[0] <= note_num <= d_string[1]:
+            string_fret_combo.append(GuitarNote("E", 5, note_num - low_e_string[0]))
+
         guitar_index[note_num] = string_fret_combo
 
     return guitar_index
@@ -195,6 +196,30 @@ def translate_notes(paired_notes, guitar_index):
         guitar_note_list.append(GuitarNote(guitar_note.string_name, guitar_note.string_index,
                                            guitar_note.fret, paired_note[0].time, paired_note[0].half_beat_index))
     return Tab(sorted(guitar_note_list, key=lambda x: x.start_time))
+
+
+def print_tab(tab):
+    guitar_strings = ["e| ", "b| ", "g| ", "d| ", "a| ", "E| "]
+
+    song_len = tab.guitar_note_list[-1].half_beat_index + 2
+    note_index = 0
+    for time_index in range(song_len):
+        # to account for fret nums > 2 characters long (10-17), and no notes at this time tick
+        max_string_len = len(guitar_strings[0]) + 1
+        current_guitar_note = tab.guitar_note_list[note_index]
+        while current_guitar_note and current_guitar_note.half_beat_index == time_index:  # catches notes on this time tick
+            fret = str(current_guitar_note.fret)
+            guitar_strings[current_guitar_note.string_index] += fret
+            max_string_len = max(max_string_len, len(guitar_strings[current_guitar_note.string_index]))
+            note_index += 1
+            current_guitar_note = tab.guitar_note_list[note_index] if note_index < len(tab.guitar_note_list) else None
+
+        for guitar_string in guitar_strings:
+            if len(guitar_string) < max_string_len:  # add dashes to strings that don't have notes at this time tick
+                guitar_string + "-" * (max_string_len - len(guitar_string))
+
+    for guitar_string in guitar_strings:
+        print(guitar_string)
 
 
 def main():

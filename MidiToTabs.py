@@ -203,14 +203,26 @@ def create_guitar_index():
 def translate_notes(paired_notes, guitar_index):
     guitar_note_list = []
     paired_notes = sorted(paired_notes, key=lambda x: x[0].time)
+    current_time = 0
+    occupied_strings = set()
     for paired_note in paired_notes:
         if paired_note[0].note not in range(40, 82):
             continue
         potential_guitar_notes = guitar_index[paired_note[0].note]
+        if current_time != paired_note[0].quarter_beat_index:
+            current_time = paired_note[0].quarter_beat_index
+            occupied_strings = set()
+
         # todo optimize note picked
-        guitar_note = potential_guitar_notes[0]
-        guitar_note_list.append(GuitarNote(guitar_note.string_name, guitar_note.string_index,
-                                           guitar_note.fret, paired_note[0].time, paired_note[0].quarter_beat_index))
+        guitar_note = None
+        for i in range(len(potential_guitar_notes)):
+            if potential_guitar_notes[i].string_index not in occupied_strings:
+                guitar_note = potential_guitar_notes[i]
+                occupied_strings.add(guitar_note.string_index)
+                break
+        if guitar_note is not None:
+            guitar_note_list.append(GuitarNote(guitar_note.string_name, guitar_note.string_index, guitar_note.fret,
+                                               paired_note[0].time, paired_note[0].quarter_beat_index))
     return Tab(sorted(guitar_note_list, key=lambda x: x.start_time))
 
 
@@ -291,8 +303,6 @@ def main():
 
     # We are going to analyze one track within our song
     single_track = MidiFile('SplitTrackDepot/0.mid', clip=True).tracks[0]
-    print("\n\nsingle track")
-    print(single_track)
 
     # Print out info about messages within our single track
     # including whether it was a note on or off, what the note

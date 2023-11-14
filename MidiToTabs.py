@@ -63,21 +63,34 @@ def song_to_tracks(song: MidiFile, dest: str):
     clear_directory(dest)
 
     # Splitting Tracks and Writing Files to dest
-    temp_song = MidiFile()
     important_meta_messages = []
-    for current_track in song.tracks:
-        for message in current_track:
+    channels_dict = {}
+    for track_index in range(len(song.tracks)):
+        total_time = 0
+        for message in song.tracks[track_index]:
+            total_time += message.time
+
             # hard coding place to find important meta messages, todo: fix later after working on more midi files
             # add speciifc meta messages to all tracks so that they play the correct tempo/key/etc.
-            if current_track.name == 'Blinding Lights (Demo)' and type(message) == mido.midifiles.meta.MetaMessage:
+            if track_index == 0 and type(message) == mido.midifiles.meta.MetaMessage:
                 if message.type == 'key_signature' or \
                         message.type == 'time_signature' or \
                         message.type == 'smpte_offset' or \
                         message.type == 'set_tempo':
                     important_meta_messages.append(message)
-        temp_song.tracks.append(important_meta_messages + current_track)
-        temp_song.save(f'SplitTrackDepot\\{current_track.name}.mid')
-        temp_song = MidiFile()
+            elif type(message) == mido.messages.messages.Message and message.type != 'sysex':
+                try:
+                    channels_dict.setdefault(message.channel, (important_meta_messages.copy(), 0))
+                    message.time = total_time - channels_dict[message.channel][1]
+                    channels_dict[message.channel][0].append(message)
+                    channels_dict[message.channel] = (channels_dict[message.channel][0], total_time)
+                except:
+                    print(message)
+        for channel in channels_dict:
+            temp_song = MidiFile()
+            temp_song.tracks.append(important_meta_messages + channels_dict[channel][0])
+            temp_song.ticks_per_beat = 480
+            temp_song.save(f'SplitTrackDepot\\{channel}.mid')
 
 
 # Create notes from the given track
@@ -191,6 +204,8 @@ def translate_notes(paired_notes, guitar_index):
     guitar_note_list = []
     paired_notes = sorted(paired_notes, key=lambda x: x[0].time)
     for paired_note in paired_notes:
+        if paired_note[0].note not in range(40, 82):
+            continue
         potential_guitar_notes = guitar_index[paired_note[0].note]
         # todo optimize note picked
         guitar_note = potential_guitar_notes[0]
@@ -243,8 +258,9 @@ def main():
     guitar_index = create_guitar_index()
 
     # Read in our selected midi file
-    blinding_lights = MidiFile('AUD_DS1340.mid', clip=True)
-    # print(blinding_lights)
+    # midi_song = MidiFile('blinding_lights.mid', clip=True)
+    midi_song = MidiFile('here_comes_the_sun.mid', clip=True)
+    # print(midi_song)
     # print("\n\n\n")
 
     # Figure out the midi tick to seconds ratio
@@ -252,7 +268,7 @@ def main():
     time_sig_numerator = 0
     found_tempo = False
     found_numerator = False
-    for message in blinding_lights.tracks[0]:
+    for message in midi_song.tracks[0]:
         if type(message) == mido.midifiles.meta.MetaMessage:
             if message.type == 'set_tempo':
                 tempo = message.tempo
@@ -264,17 +280,19 @@ def main():
                 found_numerator = True
                 if found_tempo and found_numerator:
                     break
-    ticks_to_seconds_ratio = tempo / 1000000 / blinding_lights.ticks_per_beat
-    seconds_per_beat = blinding_lights.ticks_per_beat * ticks_to_seconds_ratio
+    ticks_to_seconds_ratio = tempo / 1000000 / midi_song.ticks_per_beat
+    seconds_per_beat = midi_song.ticks_per_beat * ticks_to_seconds_ratio
 
     # BPM of song
     # print(math.pow(seconds_per_beat, -1) * 60)
 
     # Split into tracks
-    song_to_tracks(blinding_lights, 'SplitTrackDepot')
+    song_to_tracks(midi_song, 'SplitTrackDepot')
 
     # We are going to analyze one track within our song
-    single_track = MidiFile('SplitTrackDepot/Vocal Guide.mid', clip=True).tracks[0]
+    single_track = MidiFile('SplitTrackDepot/0.mid', clip=True).tracks[0]
+    print("\n\nsingle track")
+    print(single_track)
 
     # Print out info about messages within our single track
     # including whether it was a note on or off, what the note

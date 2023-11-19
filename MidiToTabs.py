@@ -4,6 +4,8 @@ import mido
 from mido import MidiFile
 from dataclasses import dataclass
 import matplotlib.pyplot as plot
+from constraint import *
+import copy
 
 
 @dataclass
@@ -15,6 +17,12 @@ class Note:
     channel: int
     time: int
     quarter_beat_index: int
+
+
+@dataclass
+class PairedNote:
+    note_on: Note
+    note_off: Note
 
 
 @dataclass
@@ -71,7 +79,7 @@ def song_to_tracks(song: MidiFile, dest: str):
             total_time += message.time
 
             # hard coding place to find important meta messages, todo: fix later after working on more midi files
-            # add speciifc meta messages to all tracks so that they play the correct tempo/key/etc.
+            # add specific meta messages to all tracks so that they play the correct tempo/key/etc.
             if track_index == 0 and type(message) == mido.midifiles.meta.MetaMessage:
                 if message.type == 'key_signature' or \
                         message.type == 'time_signature' or \
@@ -115,11 +123,13 @@ def create_notes(single_track, ticks_to_seconds_ratio, seconds_per_beat):
             continue
         if message.type == "note_on":
             temp_note = Note(note_number_to_name(message.note), message.note,
-                             True, message.velocity, message.channel, time_seconds, round(4*time_seconds/seconds_per_beat))
+                             True, message.velocity, message.channel, time_seconds,
+                             round(4*time_seconds/seconds_per_beat))
             notes_on.append(temp_note)
         elif message.type == "note_off":
             temp_note = Note(note_number_to_name(message.note), message.note,
-                             False, message.velocity, message.channel, time_seconds, round(4*time_seconds/seconds_per_beat))
+                             False, message.velocity, message.channel, time_seconds,
+                             round(4*time_seconds/seconds_per_beat))
             notes_off.append(temp_note)
         else:
             pass  # print("Not a Note!")
@@ -135,7 +145,7 @@ def pair_up_notes(notes_on, notes_off):
     paired_notes = []
     if len(notes_on) == len(notes_off):
         for x in range(len(notes_on)):
-            paired_notes.append((notes_on[x], notes_off[x]))
+            paired_notes.append(PairedNote(notes_on[x], notes_off[x]))
     return paired_notes
 
 
@@ -143,8 +153,8 @@ def graph_track(paired_notes):
     # Define data segments
     note_graph_data = []
     for paired_note in paired_notes:
-        note_graph_data.append(((paired_note[0].time, paired_note[0].note),
-                                (paired_note[1].time, paired_note[1].note)))
+        note_graph_data.append(((paired_note.note_on.time, paired_note.note_on.note),
+                                (paired_note.note_off.time, paired_note.note_off.note)))
 
     # Reordering so notes (as points) are in sequence
     note_graph_data = sorted(note_graph_data, key=lambda x: x[0][0])
@@ -172,12 +182,12 @@ def graph_track(paired_notes):
 
 
 def create_guitar_index():
-    low_e_string = (40, 57)
-    a_string = (45, 62)
-    d_string = (50, 67)
-    g_string = (55, 72)
-    b_string = (59, 76)
     e_string = (64, 81)
+    b_string = (59, 76)
+    g_string = (55, 72)
+    d_string = (50, 67)
+    a_string = (45, 62)
+    low_e_string = (40, 57)
 
     guitar_index = {}
     for note_num in range(40, 82):
@@ -188,11 +198,11 @@ def create_guitar_index():
             string_fret_combo.append(GuitarNote("b", 1, note_num - b_string[0]))
         if g_string[0] <= note_num <= g_string[1]:
             string_fret_combo.append(GuitarNote("g", 2, note_num - g_string[0]))
-        if low_e_string[0] <= note_num <= low_e_string[1]:
+        if d_string[0] <= note_num <= d_string[1]:
             string_fret_combo.append(GuitarNote("d", 3, note_num - d_string[0]))
         if a_string[0] <= note_num <= a_string[1]:
             string_fret_combo.append(GuitarNote("a", 4, note_num - a_string[0]))
-        if d_string[0] <= note_num <= d_string[1]:
+        if low_e_string[0] <= note_num <= low_e_string[1]:
             string_fret_combo.append(GuitarNote("E", 5, note_num - low_e_string[0]))
 
         guitar_index[note_num] = string_fret_combo
@@ -200,30 +210,76 @@ def create_guitar_index():
     return guitar_index
 
 
+def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
+    problem = Problem()
+
+    variables = []
+    for paired_note in simultaneous_notes:
+        if str(paired_note.note_on.note) not in variables:
+            variables.append(str(paired_note.note_on.note))
+            potential_guitar_notes = copy.deepcopy(guitar_index[paired_note.note_on.note])
+            for guitar_note in potential_guitar_notes:
+                guitar_note.quarter_beat_index = paired_note.note_on.quarter_beat_index
+            problem.addVariable(str(paired_note.note_on.note), potential_guitar_notes)
+
+    for i in range(len(variables)):
+        for j in range(i + 1, len(variables)):
+            # Add a constraint function that checks if the absolute difference is <= 4
+            def fret_constraint_function(a, b):
+                return abs(a.fret - b.fret) <= 4 or \
+                       (a.fret == 0 and abs(a.fret - b.fret) <= 7) or \
+                       (b.fret == 0 and abs(a.fret - b.fret) <= 7)
+
+            # Add a constraint function that checks if the strings are different
+            def string_constraint_function(a, b):
+                return a.string_index != b.string_index
+
+            # Add the constraints to the problem
+            problem.addConstraint(fret_constraint_function, (variables[i], variables[j]))
+            problem.addConstraint(string_constraint_function, (variables[i], variables[j]))
+
+    min_solution = problem.getSolution()
+    min_avg_string_index = None
+    for solution in problem.getSolutions():
+        sum_string_index = 0
+        for dict_val in solution.values():
+            sum_string_index += dict_val.string_index
+        avg_string_index = sum_string_index / len(solution)
+        if not min_avg_string_index or avg_string_index < min_avg_string_index:
+            min_solution = solution
+            min_avg_string_index = avg_string_index
+
+    return min_solution
+
+
 def translate_notes(paired_notes, guitar_index):
     guitar_note_list = []
-    paired_notes = sorted(paired_notes, key=lambda x: x[0].time)
-    current_time = 0
-    occupied_strings = set()
-    for paired_note in paired_notes:
-        if paired_note[0].note not in range(40, 82):
+    paired_notes = sorted(paired_notes, key=lambda x: x.note_on.time)
+    paired_note_index = 0
+    while paired_note_index < len(paired_notes):
+        current_note = paired_notes[paired_note_index]
+        if current_note.note_on.note not in range(40, 82):
             continue
-        potential_guitar_notes = guitar_index[paired_note[0].note]
-        if current_time != paired_note[0].quarter_beat_index:
-            current_time = paired_note[0].quarter_beat_index
-            occupied_strings = set()
 
-        # todo optimize note picked
-        guitar_note = None
-        for i in range(len(potential_guitar_notes)):
-            if potential_guitar_notes[i].string_index not in occupied_strings:
-                guitar_note = potential_guitar_notes[i]
-                occupied_strings.add(guitar_note.string_index)
-                break
-        if guitar_note is not None:
+        i = 1
+        current_quarter_beat_index = current_note.note_on.quarter_beat_index
+        simultaneous_notes = [current_note]
+        while paired_note_index + i < len(paired_notes) and \
+                current_quarter_beat_index == paired_notes[paired_note_index + i].note_on.quarter_beat_index:
+            simultaneous_notes.append(paired_notes[paired_note_index + i])
+            i += 1
+        paired_note_index += i
+
+        if len(simultaneous_notes) == 1:
+            guitar_note = guitar_index[current_note.note_on.note][0]
             guitar_note_list.append(GuitarNote(guitar_note.string_name, guitar_note.string_index, guitar_note.fret,
-                                               paired_note[0].time, paired_note[0].quarter_beat_index))
-    return Tab(sorted(guitar_note_list, key=lambda x: x.start_time))
+                                               current_note.note_on.time, current_note.note_on.quarter_beat_index))
+
+        else:
+            playable_notes = optimize_simultaneous_notes(simultaneous_notes, guitar_index)
+            guitar_note_list.extend(playable_notes.values())
+
+    return Tab(guitar_note_list)
 
 
 def print_tab(tab, time_sig_numerator):
@@ -237,7 +293,8 @@ def print_tab(tab, time_sig_numerator):
         # to account for fret nums > 2 characters long (10-17), and no notes at this time tick
         max_string_len = len(guitar_strings[0]) + 1
         current_guitar_note = tab.guitar_note_list[note_index] if note_index < len(tab.guitar_note_list) else None
-        while current_guitar_note and current_guitar_note.quarter_beat_index == time_index:  # catches notes on this time tick
+        while current_guitar_note and current_guitar_note.quarter_beat_index == time_index:
+            # catches notes on this time tick
             fret = str(current_guitar_note.fret)
             guitar_strings[current_guitar_note.string_index] += fret
             max_string_len = max(max_string_len, len(guitar_strings[current_guitar_note.string_index]))
@@ -257,7 +314,8 @@ def print_tab(tab, time_sig_numerator):
             print_tab_line(guitar_strings)
             guitar_strings = ["e| ", "b| ", "g| ", "d| ", "a| ", "E| "]
 
-    print_tab_line(guitar_strings)
+    if len(guitar_strings[0]) > 3:
+        print_tab_line(guitar_strings)
 
 
 def print_tab_line(guitar_strings):

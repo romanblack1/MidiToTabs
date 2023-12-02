@@ -210,6 +210,44 @@ def create_guitar_index():
     return guitar_index
 
 
+def remove_unplayable_bars(solutions):
+    vetted_solutions = []
+
+    for solution in solutions:
+        fret_nums = []
+        for guitar_note in solution.values():
+            if guitar_note.fret != 0:
+                fret_nums.append(guitar_note.fret)
+        if len(fret_nums) <= 4:
+            vetted_solutions.append(solution)
+            continue
+        necessary_bar_len = 2 if len(fret_nums) == 5 else 3
+        for x in range(1, 15):
+            if fret_nums.count(x) >= necessary_bar_len:
+                vetted_solutions.append(solution)
+                break
+            elif fret_nums.count(x) == 1:
+                break
+
+    return vetted_solutions
+
+
+def pick_min_string_index(solutions):
+    min_solution = solutions[0]
+
+    min_avg_string_index = 6
+    for solution in solutions:
+        sum_string_index = 0
+        for dict_val in solution.values():
+            sum_string_index += dict_val.string_index
+        avg_string_index = sum_string_index / len(solution)
+        if avg_string_index < min_avg_string_index:
+            min_solution = solution
+            min_avg_string_index = avg_string_index
+
+    return min_solution
+
+
 def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
     problem = Problem()
 
@@ -238,18 +276,15 @@ def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
             problem.addConstraint(fret_constraint_function, (variables[i], variables[j]))
             problem.addConstraint(string_constraint_function, (variables[i], variables[j]))
 
-    min_solution = problem.getSolution()
-    min_avg_string_index = None
-    for solution in problem.getSolutions():
-        sum_string_index = 0
-        for dict_val in solution.values():
-            sum_string_index += dict_val.string_index
-        avg_string_index = sum_string_index / len(solution)
-        if not min_avg_string_index or avg_string_index < min_avg_string_index:
-            min_solution = solution
-            min_avg_string_index = avg_string_index
+    solutions = problem.getSolutions()
+    best_solution = pick_min_string_index(solutions)
 
-    return min_solution
+    solutions = remove_unplayable_bars(solutions)
+
+    if solutions:
+        best_solution = pick_min_string_index(solutions)
+
+    return best_solution
 
 
 def translate_notes(paired_notes, guitar_index):

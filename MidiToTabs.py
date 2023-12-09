@@ -102,34 +102,45 @@ def song_to_tracks(song: MidiFile, dest: str):
 
 
 # Create notes from the given track
-def create_notes(single_track, ticks_to_seconds_ratio, seconds_per_beat):
+def create_notes(single_track, time_info_dict):
     notes_on = []
     notes_off = []
     time_counter = 0
     time_seconds = 0
     for message in single_track:
         try:
-            time_counter += message.time
+            if type(message) == mido.midifiles.meta.MetaMessage and message.type == "set_tempo":
+                pass
+            else:
+                time_counter += message.time
 
+            if len(time_info_dict["tempos"]) > 0 and time_counter >= time_info_dict["tempos"][0][1]:
+                new_tempo = time_info_dict["tempos"].pop()[0]
+                time_info_dict["ticks_to_seconds_ratio"] = \
+                    new_tempo / 1000000 / time_info_dict["ticks_per_beat"]
+                time_info_dict["seconds_per_beat"] = \
+                    time_info_dict["ticks_per_beat"] * time_info_dict["ticks_to_seconds_ratio"]
             # Calculate the correct time in seconds by doing MIDI Ticks * (Tempo / PPQ)
             # In this case, we have tempo in microseconds, so we divide by 1000000
             # to get tempo in seconds. 480 PPQ is found in the header of the MidiFile
             # "ticks_per_beat" and tempo is found in a MetaMessage in the track
             # named 'set_tempo' as the value tempo
-            time_seconds = time_counter * ticks_to_seconds_ratio
-        except Exception:
-            print("Message without time:" + message)
+            time_seconds = time_counter * time_info_dict["ticks_to_seconds_ratio"]
+        except Exception as e:
+            print("Message without time:" + str(message) + str(e))
         if type(message) == mido.midifiles.meta.MetaMessage:
+            if message.type == "set_tempo":
+                time_info_dict["tempos"].append((message.tempo, message.time))
             continue
         if message.type == "note_on":
             temp_note = Note(note_number_to_name(message.note), message.note,
                              True, message.velocity, message.channel, time_seconds,
-                             round(4*time_seconds/seconds_per_beat))
+                             1 + round(4*time_seconds/time_info_dict["seconds_per_beat"]))
             notes_on.append(temp_note)
         elif message.type == "note_off":
             temp_note = Note(note_number_to_name(message.note), message.note,
                              False, message.velocity, message.channel, time_seconds,
-                             round(4*time_seconds/seconds_per_beat))
+                             1 + round(4*time_seconds/time_info_dict["seconds_per_beat"]))
             notes_off.append(temp_note)
         else:
             pass  # print("Not a Note!")
@@ -318,7 +329,7 @@ def translate_notes(paired_notes, guitar_index):
 
 
 def print_tab(tab, time_sig_numerator, time_sig_denominator):
-    guitar_strings = ["e| ", "b| ", "g| ", "d| ", "a| ", "E| "]
+    guitar_strings = ["e|", "b|", "g|", "d|", "a|", "E|"]
 
     quarter_beats_per_measure = time_sig_numerator * time_sig_denominator
     last_beat_index = tab.guitar_note_list[-1].quarter_beat_index
@@ -342,12 +353,12 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator):
                 num_dashes = (max_string_len - len(guitar_strings[guitar_string_index]))
                 guitar_strings[guitar_string_index] += ("-" * num_dashes)
 
-        if time_index % quarter_beats_per_measure == 0:
+        if time_index > 0 and time_index % quarter_beats_per_measure == 0:
             for guitar_string_index in range(len(guitar_strings)):
                 guitar_strings[guitar_string_index] += "|"
-        if time_index % (quarter_beats_per_measure * 8) == 0:
+        if time_index > 0 and time_index % (quarter_beats_per_measure * 8) == 0:
             print_tab_line(guitar_strings)
-            guitar_strings = ["e| ", "b| ", "g| ", "d| ", "a| ", "E| "]
+            guitar_strings = ["e|", "b|", "g|", "d|", "a|", "E|"]
 
     if len(guitar_strings[0]) > 3:
         print_tab_line(guitar_strings)
@@ -364,13 +375,16 @@ def main():
 
     # Read in our selected midi file
     # midi_song = MidiFile('blinding_lights.mid', clip=True)
-    midi_song = MidiFile('blinding_lights.mid', clip=True)
+    # midi_song = MidiFile('here_comes_the_sun.mid', clip=True)
+    midi_song = MidiFile('Death Cab For Cutie - I Will Follow You Into The Dark.mid', clip=True)
     print(midi_song)
     # print("\n\n\n")
 
     # Figure out the midi tick to seconds ratio
-    tempo = 0
-    time_sig_numerator = 0
+    time_info_dict = {}
+    tempo = 500000
+    time_sig_numerator = 4
+    time_sig_denominator = 4
     found_tempo = False
     found_numerator = False
     for message in midi_song.tracks[0]:
@@ -388,6 +402,12 @@ def main():
                     break
     ticks_to_seconds_ratio = tempo / 1000000 / midi_song.ticks_per_beat
     seconds_per_beat = midi_song.ticks_per_beat * ticks_to_seconds_ratio
+    time_info_dict["tempos"] = []
+    time_info_dict["ticks_per_beat"] = midi_song.ticks_per_beat
+    time_info_dict["time_sig_numerator"] = time_sig_numerator
+    time_info_dict["time_sig_denominator"] = time_sig_denominator
+    time_info_dict["ticks_to_seconds_ratio"] = ticks_to_seconds_ratio
+    time_info_dict["seconds_per_beat"] = seconds_per_beat
 
     # BPM of song
     # print(math.pow(seconds_per_beat, -1) * 60)
@@ -397,32 +417,33 @@ def main():
 
     # We are going to analyze one track within our song
     # 0 for death cab, 0 for beatles, 3 for blinding lights
-    single_track = MidiFile('SplitTrackDepot/3.mid', clip=True).tracks[0]
+    single_track = MidiFile('SplitTrackDepot/0.mid', clip=True).tracks[0]
 
     # Print out info about messages within our single track
     # including whether it was a note on or off, what the note
     # was, and the message as a whole.
     # print(single_track)
 
-    notes_on, notes_off = create_notes(single_track, ticks_to_seconds_ratio, seconds_per_beat)
+    notes_on, notes_off = create_notes(single_track, time_info_dict)
 
     # Pair up the notes_on and notes_off that we collected
     paired_notes = pair_up_notes(notes_on, notes_off)
     
     # Print out all of the paired notes
     # for paired_note in paired_notes:
-    #     print(paired_note)
+        # print(paired_note)
 
     # Graph the track
-    # graph_track(paired_notes)
+    # paired_notes = sorted(paired_notes, key=lambda x: x.note_on.time)
+    # graph_track(paired_notes[0:25])
 
     guitar_tab = translate_notes(paired_notes, guitar_index)
     # for note in guitar_tab.guitar_note_list:
-    #     print(note)
+        # print(note)
 
     # print_note_range(paired_notes)
 
-    print_tab(guitar_tab, time_sig_numerator, time_sig_denominator)
+    print_tab(guitar_tab, time_info_dict["time_sig_numerator"], time_info_dict["time_sig_denominator"])
 
     return 0
 

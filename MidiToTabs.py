@@ -364,8 +364,8 @@ def main():
 
     # Read in our selected midi file
     # midi_song = MidiFile('blinding_lights.mid', clip=True)
-    midi_song = MidiFile('here_comes_the_sun.mid', clip=True)
-    # print(midi_song)
+    midi_song = MidiFile('Death Cab For Cutie - I Will Follow You Into The Dark.mid', clip=True)
+    print(midi_song)
     # print("\n\n\n")
 
     # Figure out the midi tick to seconds ratio

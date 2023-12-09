@@ -317,10 +317,10 @@ def translate_notes(paired_notes, guitar_index):
     return Tab(guitar_note_list)
 
 
-def print_tab(tab, time_sig_numerator):
+def print_tab(tab, time_sig_numerator, time_sig_denominator):
     guitar_strings = ["e| ", "b| ", "g| ", "d| ", "a| ", "E| "]
 
-    quarter_beats_per_measure = time_sig_numerator * 4
+    quarter_beats_per_measure = time_sig_numerator * time_sig_denominator
     last_beat_index = tab.guitar_note_list[-1].quarter_beat_index
     song_len = last_beat_index + quarter_beats_per_measure - (last_beat_index % quarter_beats_per_measure) + 1
     note_index = 0
@@ -364,7 +364,7 @@ def main():
 
     # Read in our selected midi file
     # midi_song = MidiFile('blinding_lights.mid', clip=True)
-    midi_song = MidiFile('Death Cab For Cutie - I Will Follow You Into The Dark.mid', clip=True)
+    midi_song = MidiFile('blinding_lights.mid', clip=True)
     print(midi_song)
     # print("\n\n\n")
 
@@ -382,6 +382,7 @@ def main():
                     break
             if message.type == 'time_signature':
                 time_sig_numerator = message.numerator
+                time_sig_denominator = message.denominator
                 found_numerator = True
                 if found_tempo and found_numerator:
                     break
@@ -395,7 +396,8 @@ def main():
     song_to_tracks(midi_song, 'SplitTrackDepot')
 
     # We are going to analyze one track within our song
-    single_track = MidiFile('SplitTrackDepot/0.mid', clip=True).tracks[0]
+    # 0 for death cab, 0 for beatles, 3 for blinding lights
+    single_track = MidiFile('SplitTrackDepot/3.mid', clip=True).tracks[0]
 
     # Print out info about messages within our single track
     # including whether it was a note on or off, what the note
@@ -420,7 +422,7 @@ def main():
 
     # print_note_range(paired_notes)
 
-    print_tab(guitar_tab, time_sig_numerator)
+    print_tab(guitar_tab, time_sig_numerator, time_sig_denominator)
 
     return 0
 

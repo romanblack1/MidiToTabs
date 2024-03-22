@@ -380,29 +380,31 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator):
 
 
 def main(midi_file, track_num, tuning_offset, capo_offset):
+    # Create guitar index with note keys -- fret-string values
     guitar_index = create_guitar_index(tuning_offset, capo_offset)
 
+    # Read in the song
     midi_song = MidiFile(midi_file, clip=True)
 
+    # Capture important info from song
     time_info_dict = create_time_info_dict(midi_song)
 
-    # Split into tracks
+    # Split song into tracks for single track translation
     song_to_tracks(midi_song, 'SplitTrackDepot')
-
-    # We are going to analyze one track within our song
     track_file = 'SplitTrackDepot/' + str(track_num) + '.mid'
     single_track = MidiFile(track_file, clip=True).tracks[0]
 
+    # Read from the single track and put notes into structures
     notes_on, notes_off = create_notes(single_track, time_info_dict)
-
-    # Pair up the notes_on and notes_off that we collected
     paired_notes = pair_up_notes(notes_on, notes_off)
 
+    # Create the list of guitar notes translated from the paired notes we read from the track-file
     guitar_tab = translate_notes(paired_notes, guitar_index, tuning_offset, capo_offset)
 
+    # Print the generated tab into expected readable output
     print_tab(guitar_tab, time_info_dict["time_sig_numerator"], time_info_dict["time_sig_denominator"])
 
-    return 0
+    return
 
 
 if __name__ == '__main__':

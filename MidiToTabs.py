@@ -43,6 +43,7 @@ class Tab:
 #     print("Min Note: " + str(paired_notes[0][0].note) + ". Max Note: " + str(paired_notes[-1][0].note))
 
 
+# Given tuning and capo offsets, create a dictionary of notes to fret-string combos
 def create_guitar_index(tuning_offset, capo_offset):
     e_string = (64 + capo_offset, 81)
     b_string = (59 + capo_offset, 76)
@@ -188,6 +189,7 @@ def pair_up_notes(notes_on, notes_off):
     return paired_notes
 
 
+# Pick the solution with the lowest avg string value
 def pick_min_string_index(solutions):
     min_solution = solutions[0]
 
@@ -204,6 +206,7 @@ def pick_min_string_index(solutions):
     return min_solution
 
 
+# Checks for bars that are unplayable and removes them from the solution set
 def remove_unplayable_bars(solutions):
     vetted_solutions = []
 
@@ -226,6 +229,7 @@ def remove_unplayable_bars(solutions):
     return vetted_solutions
 
 
+# Given notes to be played simultaneously, chooses the best fingering for them to be played
 def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
     problem = Problem()
 
@@ -265,6 +269,7 @@ def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
     return best_solution
 
 
+# Returns a Tab that has the chosed way to play all notes
 def translate_notes(paired_notes, guitar_index, tuning_offset, capo_offset):
     guitar_note_list = []
     paired_notes = sorted(paired_notes, key=lambda x: x.note_on.time)
@@ -296,12 +301,14 @@ def translate_notes(paired_notes, guitar_index, tuning_offset, capo_offset):
     return Tab(guitar_note_list)
 
 
+# Print one line of the tab
 def print_tab_line(guitar_strings):
     for guitar_string in guitar_strings:
         print(guitar_string)
     print()
 
 
+# Given the Tab with the chosen notes, creates the human-readable tab and prints it
 def print_tab(tab, time_sig_numerator, time_sig_denominator):
     guitar_strings = ["e|", "b|", "g|", "d|", "a|", "E|"]
 

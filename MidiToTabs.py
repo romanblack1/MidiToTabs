@@ -73,6 +73,40 @@ def create_guitar_index(tuning_offset, capo_offset):
     return guitar_index
 
 
+# Captures important info from midi song
+def create_time_info_dict(midi_song):
+    # Figure out the midi tick to seconds ratio
+    time_info_dict = {}
+    tempo = 500000
+    time_sig_numerator = 4
+    time_sig_denominator = 4
+    found_tempo = False
+    found_numerator = False
+    for message in midi_song.tracks[0]:
+        if type(message) == mido.midifiles.meta.MetaMessage:
+            if message.type == 'set_tempo':
+                tempo = message.tempo
+                found_tempo = True
+                if found_tempo and found_numerator:
+                    break
+            if message.type == 'time_signature':
+                time_sig_numerator = message.numerator
+                time_sig_denominator = message.denominator
+                found_numerator = True
+                if found_tempo and found_numerator:
+                    break
+    ticks_to_seconds_ratio = tempo / 1000000 / midi_song.ticks_per_beat
+    seconds_per_beat = midi_song.ticks_per_beat * ticks_to_seconds_ratio
+    time_info_dict["tempos"] = []
+    time_info_dict["ticks_per_beat"] = midi_song.ticks_per_beat
+    time_info_dict["time_sig_numerator"] = time_sig_numerator
+    time_info_dict["time_sig_denominator"] = time_sig_denominator
+    time_info_dict["ticks_to_seconds_ratio"] = ticks_to_seconds_ratio
+    time_info_dict["seconds_per_beat"] = seconds_per_beat
+
+    return time_info_dict
+
+
 # Clears the given directory from path of all files
 def clear_directory(path):
     for filename in os.listdir(path):
@@ -350,34 +384,7 @@ def main(midi_file, track_num, tuning_offset, capo_offset):
 
     midi_song = MidiFile(midi_file, clip=True)
 
-    # Figure out the midi tick to seconds ratio
-    time_info_dict = {}
-    tempo = 500000
-    time_sig_numerator = 4
-    time_sig_denominator = 4
-    found_tempo = False
-    found_numerator = False
-    for message in midi_song.tracks[0]:
-        if type(message) == mido.midifiles.meta.MetaMessage:
-            if message.type == 'set_tempo':
-                tempo = message.tempo
-                found_tempo = True
-                if found_tempo and found_numerator:
-                    break
-            if message.type == 'time_signature':
-                time_sig_numerator = message.numerator
-                time_sig_denominator = message.denominator
-                found_numerator = True
-                if found_tempo and found_numerator:
-                    break
-    ticks_to_seconds_ratio = tempo / 1000000 / midi_song.ticks_per_beat
-    seconds_per_beat = midi_song.ticks_per_beat * ticks_to_seconds_ratio
-    time_info_dict["tempos"] = []
-    time_info_dict["ticks_per_beat"] = midi_song.ticks_per_beat
-    time_info_dict["time_sig_numerator"] = time_sig_numerator
-    time_info_dict["time_sig_denominator"] = time_sig_denominator
-    time_info_dict["ticks_to_seconds_ratio"] = ticks_to_seconds_ratio
-    time_info_dict["seconds_per_beat"] = seconds_per_beat
+    time_info_dict = create_time_info_dict(midi_song)
 
     # Split into tracks
     song_to_tracks(midi_song, 'SplitTrackDepot')

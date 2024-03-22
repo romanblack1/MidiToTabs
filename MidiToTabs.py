@@ -1,9 +1,8 @@
-import math
+import sys
 import os
 import mido
 from mido import MidiFile
 from dataclasses import dataclass
-import matplotlib.pyplot as plot
 from constraint import *
 import copy
 
@@ -39,6 +38,40 @@ class Tab:
     guitar_note_list: list
 
 
+# def print_note_range(paired_notes):
+#     paired_notes = sorted(paired_notes, key=lambda x: x[0].note)
+#     print("Min Note: " + str(paired_notes[0][0].note) + ". Max Note: " + str(paired_notes[-1][0].note))
+
+
+def create_guitar_index(tuning_offset, capo_offset):
+    e_string = (64 + capo_offset, 81)
+    b_string = (59 + capo_offset, 76)
+    g_string = (55 + capo_offset, 72)
+    d_string = (50 + capo_offset, 67)
+    a_string = (45 + capo_offset, 62)
+    low_e_string = (40 + capo_offset + tuning_offset, 57 + tuning_offset)
+
+    guitar_index = {}
+    for note_num in range(40 + capo_offset + tuning_offset, 82):
+        string_fret_combo = []
+        if e_string[0] <= note_num <= e_string[1]:
+            string_fret_combo.append(GuitarNote("e", 0, note_num - e_string[0]))
+        if b_string[0] <= note_num <= b_string[1]:
+            string_fret_combo.append(GuitarNote("b", 1, note_num - b_string[0]))
+        if g_string[0] <= note_num <= g_string[1]:
+            string_fret_combo.append(GuitarNote("g", 2, note_num - g_string[0]))
+        if d_string[0] <= note_num <= d_string[1]:
+            string_fret_combo.append(GuitarNote("d", 3, note_num - d_string[0]))
+        if a_string[0] <= note_num <= a_string[1]:
+            string_fret_combo.append(GuitarNote("a", 4, note_num - a_string[0]))
+        if low_e_string[0] <= note_num <= low_e_string[1]:
+            string_fret_combo.append(GuitarNote("E", 5, note_num - low_e_string[0]))
+
+        guitar_index[note_num] = string_fret_combo
+
+    return guitar_index
+
+
 # Clears the given directory from path of all files
 def clear_directory(path):
     for filename in os.listdir(path):
@@ -47,25 +80,8 @@ def clear_directory(path):
             os.remove(file_path)
 
 
-def print_note_range(paired_notes):
-    paired_notes = sorted(paired_notes, key=lambda x: x[0].note)
-    print("Min Note: " + str(paired_notes[0][0].note) + ". Max Note: " + str(paired_notes[-1][0].note))
-
-
-# Translates from MIDI note number (0-128) to name with octave and number
-def note_number_to_name(note_number):
-    # Define a list of note names
-    note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-    # Calculate the octave and note index
-    octave = note_number // 12
-    note_index = note_number % 12
-    # Get the note name based on the note index
-    note_name = note_names[note_index]
-    return f"{note_name}{octave}"
-
-
 # Splits a given midi song into midi files containing each
-# track separately, saves them in the given dest
+# track separately, saves them in the given destination
 def song_to_tracks(song: MidiFile, dest: str):
     # Clearing Destination of Midi Files
     clear_directory(dest)
@@ -78,7 +94,7 @@ def song_to_tracks(song: MidiFile, dest: str):
         for message in song.tracks[track_index]:
             total_time += message.time
 
-            # hard coding place to find important meta messages, todo: fix later after working on more midi files
+            # hard coding place to find important meta messages,
             # add specific meta messages to all tracks so that they play the correct tempo/key/etc.
             if track_index == 0 and type(message) == mido.midifiles.meta.MetaMessage:
                 if message.type == 'key_signature' or \
@@ -99,6 +115,18 @@ def song_to_tracks(song: MidiFile, dest: str):
             temp_song.tracks.append(important_meta_messages + channels_dict[channel][0])
             temp_song.ticks_per_beat = 480
             temp_song.save(f'SplitTrackDepot\\{channel}.mid')
+
+
+# Translates from MIDI note number (0-128) to name with octave and number
+def note_number_to_name(note_number):
+    # Define a list of note names
+    note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+    # Calculate the octave and note index
+    octave = note_number // 12
+    note_index = note_number % 12
+    # Get the note name based on the note index
+    note_name = note_names[note_index]
+    return f"{note_name}{octave}"
 
 
 # Create notes from the given track
@@ -151,8 +179,8 @@ def create_notes(single_track, time_info_dict):
 # objects) into a singular tuple with the on note first and
 # the off note second
 def pair_up_notes(notes_on, notes_off):
-    notes_on = sorted(notes_on, key=lambda x: x.name)
-    notes_off = sorted(notes_off, key=lambda x: x.name)
+    notes_on = sorted(notes_on, key=lambda note: note.name)
+    notes_off = sorted(notes_off, key=lambda note: note.name)
     paired_notes = []
     if len(notes_on) == len(notes_off):
         for x in range(len(notes_on)):
@@ -160,65 +188,20 @@ def pair_up_notes(notes_on, notes_off):
     return paired_notes
 
 
-def graph_track(paired_notes):
-    # Define data segments
-    note_graph_data = []
-    for paired_note in paired_notes:
-        note_graph_data.append(((paired_note.note_on.time, paired_note.note_on.note),
-                                (paired_note.note_off.time, paired_note.note_off.note)))
+def pick_min_string_index(solutions):
+    min_solution = solutions[0]
 
-    # Reordering so notes (as points) are in sequence
-    note_graph_data = sorted(note_graph_data, key=lambda x: x[0][0])
+    min_avg_string_index = 6
+    for solution in solutions:
+        sum_string_index = 0
+        for dict_val in solution.values():
+            sum_string_index += dict_val.string_index
+        avg_string_index = sum_string_index / len(solution)
+        if avg_string_index < min_avg_string_index:
+            min_solution = solution
+            min_avg_string_index = avg_string_index
 
-    # Print graph data
-    # for note_graph_point in note_graph_data:
-    #     print(note_graph_point)
-
-    # Create graph
-    _, ax = plot.subplots()
-    ax.set_xlabel('Time (Seconds)')
-    ax.set_ylabel('Note (0-128)')
-    ax.set_title('Plot of MIDI Data')
-
-    # Plot each line segment on graph
-    for start, end in note_graph_data:
-        x_values = [start[0], end[0]]
-        y_values = [start[1], end[1]]
-        ax.plot(x_values, y_values, marker='o', linestyle='-')
-
-    # Show graph
-    plot.show()
-
-    return
-
-
-def create_guitar_index():
-    e_string = (64, 81)
-    b_string = (59, 76)
-    g_string = (55, 72)
-    d_string = (50, 67)
-    a_string = (45, 62)
-    low_e_string = (40, 57)
-
-    guitar_index = {}
-    for note_num in range(40, 82):
-        string_fret_combo = []
-        if e_string[0] <= note_num <= e_string[1]:
-            string_fret_combo.append(GuitarNote("e", 0, note_num - e_string[0]))
-        if b_string[0] <= note_num <= b_string[1]:
-            string_fret_combo.append(GuitarNote("b", 1, note_num - b_string[0]))
-        if g_string[0] <= note_num <= g_string[1]:
-            string_fret_combo.append(GuitarNote("g", 2, note_num - g_string[0]))
-        if d_string[0] <= note_num <= d_string[1]:
-            string_fret_combo.append(GuitarNote("d", 3, note_num - d_string[0]))
-        if a_string[0] <= note_num <= a_string[1]:
-            string_fret_combo.append(GuitarNote("a", 4, note_num - a_string[0]))
-        if low_e_string[0] <= note_num <= low_e_string[1]:
-            string_fret_combo.append(GuitarNote("E", 5, note_num - low_e_string[0]))
-
-        guitar_index[note_num] = string_fret_combo
-
-    return guitar_index
+    return min_solution
 
 
 def remove_unplayable_bars(solutions):
@@ -241,22 +224,6 @@ def remove_unplayable_bars(solutions):
                 break
 
     return vetted_solutions
-
-
-def pick_min_string_index(solutions):
-    min_solution = solutions[0]
-
-    min_avg_string_index = 6
-    for solution in solutions:
-        sum_string_index = 0
-        for dict_val in solution.values():
-            sum_string_index += dict_val.string_index
-        avg_string_index = sum_string_index / len(solution)
-        if avg_string_index < min_avg_string_index:
-            min_solution = solution
-            min_avg_string_index = avg_string_index
-
-    return min_solution
 
 
 def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
@@ -298,13 +265,14 @@ def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
     return best_solution
 
 
-def translate_notes(paired_notes, guitar_index):
+def translate_notes(paired_notes, guitar_index, tuning_offset, capo_offset):
     guitar_note_list = []
     paired_notes = sorted(paired_notes, key=lambda x: x.note_on.time)
     paired_note_index = 0
     while paired_note_index < len(paired_notes):
         current_note = paired_notes[paired_note_index]
-        if current_note.note_on.note not in range(40, 82):
+        if current_note.note_on.note not in range(40 + tuning_offset + capo_offset, 82):
+            paired_note_index += 1
             continue
 
         i = 1
@@ -326,6 +294,12 @@ def translate_notes(paired_notes, guitar_index):
             guitar_note_list.extend(playable_notes.values())
 
     return Tab(guitar_note_list)
+
+
+def print_tab_line(guitar_strings):
+    for guitar_string in guitar_strings:
+        print(guitar_string)
+    print()
 
 
 def print_tab(tab, time_sig_numerator, time_sig_denominator):
@@ -364,21 +338,13 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator):
         print_tab_line(guitar_strings)
 
 
-def print_tab_line(guitar_strings):
-    for guitar_string in guitar_strings:
-        print(guitar_string)
-    print()
+def main(midi_file, track_num, tuning_offset, capo_offset):
+    guitar_index = create_guitar_index(tuning_offset, capo_offset)
 
+    midi_song = MidiFile(midi_file, clip=True)
 
-def main():
-    guitar_index = create_guitar_index()
-
-    # Read in our selected midi file
+    # midi_song = MidiFile('Death Cab For Cutie - I Will Follow You Into The Dark.mid', clip=True)
     # midi_song = MidiFile('blinding_lights.mid', clip=True)
-    # midi_song = MidiFile('here_comes_the_sun.mid', clip=True)
-    midi_song = MidiFile('Death Cab For Cutie - I Will Follow You Into The Dark.mid', clip=True)
-    print(midi_song)
-    # print("\n\n\n")
 
     # Figure out the midi tick to seconds ratio
     time_info_dict = {}
@@ -409,39 +375,20 @@ def main():
     time_info_dict["ticks_to_seconds_ratio"] = ticks_to_seconds_ratio
     time_info_dict["seconds_per_beat"] = seconds_per_beat
 
-    # BPM of song
-    # print(math.pow(seconds_per_beat, -1) * 60)
-
     # Split into tracks
     song_to_tracks(midi_song, 'SplitTrackDepot')
 
     # We are going to analyze one track within our song
     # 0 for death cab, 0 for beatles, 3 for blinding lights
-    single_track = MidiFile('SplitTrackDepot/0.mid', clip=True).tracks[0]
-
-    # Print out info about messages within our single track
-    # including whether it was a note on or off, what the note
-    # was, and the message as a whole.
-    # print(single_track)
+    track_file = 'SplitTrackDepot/' + str(track_num) + ' .mid'
+    single_track = MidiFile(track_file, clip=True).tracks[0]
 
     notes_on, notes_off = create_notes(single_track, time_info_dict)
 
     # Pair up the notes_on and notes_off that we collected
     paired_notes = pair_up_notes(notes_on, notes_off)
-    
-    # Print out all of the paired notes
-    # for paired_note in paired_notes:
-        # print(paired_note)
 
-    # Graph the track
-    # paired_notes = sorted(paired_notes, key=lambda x: x.note_on.time)
-    # graph_track(paired_notes[0:25])
-
-    guitar_tab = translate_notes(paired_notes, guitar_index)
-    # for note in guitar_tab.guitar_note_list:
-        # print(note)
-
-    # print_note_range(paired_notes)
+    guitar_tab = translate_notes(paired_notes, guitar_index, tuning_offset, capo_offset)
 
     print_tab(guitar_tab, time_info_dict["time_sig_numerator"], time_info_dict["time_sig_denominator"])
 
@@ -449,4 +396,14 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) == 2:
+        main(sys.argv[1], 0, 0, 0)
+    if len(sys.argv) == 3:
+        main(sys.argv[1], int(sys.argv[2]), 0, 0)
+    elif len(sys.argv) == 5:
+        main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))
+
+    else:
+        print("Usages:")
+        print("python3 MidiToTabs.py <path_to_midi_file>")
+        print("python3 MidiToTabs.py <path_to_midi_file> <tuning offset> <capo fret>")

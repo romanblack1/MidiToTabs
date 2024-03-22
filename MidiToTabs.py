@@ -343,9 +343,6 @@ def main(midi_file, track_num, tuning_offset, capo_offset):
 
     midi_song = MidiFile(midi_file, clip=True)
 
-    # midi_song = MidiFile('Death Cab For Cutie - I Will Follow You Into The Dark.mid', clip=True)
-    # midi_song = MidiFile('blinding_lights.mid', clip=True)
-
     # Figure out the midi tick to seconds ratio
     time_info_dict = {}
     tempo = 500000
@@ -379,8 +376,7 @@ def main(midi_file, track_num, tuning_offset, capo_offset):
     song_to_tracks(midi_song, 'SplitTrackDepot')
 
     # We are going to analyze one track within our song
-    # 0 for death cab, 0 for beatles, 3 for blinding lights
-    track_file = 'SplitTrackDepot/' + str(track_num) + ' .mid'
+    track_file = 'SplitTrackDepot/' + str(track_num) + '.mid'
     single_track = MidiFile(track_file, clip=True).tracks[0]
 
     notes_on, notes_off = create_notes(single_track, time_info_dict)

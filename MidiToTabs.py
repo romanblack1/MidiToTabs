@@ -420,7 +420,7 @@ def main(midi_file, channel_num, tuning_offset, capo_offset):
 if __name__ == '__main__':
     if len(sys.argv) == 2:
         main(sys.argv[1], -1, 0, 0)
-    if len(sys.argv) == 3:
+    elif len(sys.argv) == 3:
         main(sys.argv[1], int(sys.argv[2]), 0, 0)
     elif len(sys.argv) == 5:
         main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))

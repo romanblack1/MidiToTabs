@@ -318,18 +318,12 @@ def translate_notes(paired_notes, guitar_index):
     paired_note_index = 0
     while paired_note_index < len(paired_notes):
         current_note = paired_notes[paired_note_index]
-        # if current_note.note_on.note not in range(40 + tuning_offset + capo_offset, 82):
-        #     paired_note_index += 1
-        #     continue
 
         i = 1
         current_quarter_beat_index = current_note.note_on.quarter_beat_index
         simultaneous_notes = [current_note]
         while paired_note_index + i < len(paired_notes) and \
                 current_quarter_beat_index == paired_notes[paired_note_index + i].note_on.quarter_beat_index:
-            # if paired_notes[paired_note_index + i].note_on.note not in range(40 + tuning_offset + capo_offset, 82):
-            #     paired_note_index += 1
-            #     continue
             simultaneous_notes.append(paired_notes[paired_note_index + i])
             i += 1
         paired_note_index += i

@@ -307,7 +307,7 @@ def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
     return best_solution
 
 
-# Returns a Tab that has the chosed way to play all notes
+# Returns a Tab that has the chosen way to play all notes
 def translate_notes(paired_notes, guitar_index, tuning_offset, capo_offset):
     guitar_note_list = []
     paired_notes = sorted(paired_notes, key=lambda x: x.note_on.time)
@@ -323,6 +323,9 @@ def translate_notes(paired_notes, guitar_index, tuning_offset, capo_offset):
         simultaneous_notes = [current_note]
         while paired_note_index + i < len(paired_notes) and \
                 current_quarter_beat_index == paired_notes[paired_note_index + i].note_on.quarter_beat_index:
+            if paired_notes[paired_note_index + i].note_on.note not in range(40 + tuning_offset + capo_offset, 82):
+                paired_note_index += 1
+                continue
             simultaneous_notes.append(paired_notes[paired_note_index + i])
             i += 1
         paired_note_index += i

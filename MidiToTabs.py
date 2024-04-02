@@ -143,8 +143,9 @@ def song_to_tracks(song: MidiFile, destination_dir: str):
                     message.time = total_time - channels_dict[message.channel][1]
                     channels_dict[message.channel][0].append(message)
                     channels_dict[message.channel] = (channels_dict[message.channel][0], total_time)
-                except:
+                except Exception as e:
                     print(message)
+                    print(e)
     for channel in channels_dict:
         temp_song = MidiFile()
         temp_song.tracks.append(important_meta_messages + channels_dict[channel][0])

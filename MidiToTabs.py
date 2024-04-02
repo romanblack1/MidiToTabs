@@ -125,7 +125,6 @@ def song_to_tracks(song: MidiFile, destination_dir: str):
     important_meta_messages = []
     channels_dict = {}
     for track_index in range(len(song.tracks)):
-        print("track: ", track_index)
         total_time = 0
         for message in song.tracks[track_index]:
             total_time += message.time

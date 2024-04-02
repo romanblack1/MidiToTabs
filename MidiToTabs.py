@@ -304,6 +304,10 @@ def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
             problem.addConstraint(string_constraint_function, (variables[i], variables[j]))
 
     solutions = problem.getSolutions()
+    if len(solutions) == 0:
+        simultaneous_notes.pop(1)
+        return optimize_simultaneous_notes(simultaneous_notes, guitar_index)
+
     best_solution = pick_min_string_index(solutions)
 
     solutions = remove_unplayable_bars(solutions)

@@ -117,14 +117,15 @@ def clear_directory(path):
 
 # Splits a given midi song into midi files containing each
 # track separately, saves them in the given destination
-def song_to_tracks(song: MidiFile, dest: str):
+def song_to_tracks(song: MidiFile, destination_dir: str):
     # Clearing Destination of Midi Files
-    clear_directory(dest)
+    clear_directory(destination_dir)
 
-    # Splitting Tracks and Writing Files to dest
+    # Splitting Tracks and Writing Files to destination_dir
     important_meta_messages = []
     channels_dict = {}
     for track_index in range(len(song.tracks)):
+        print("track: ", track_index)
         total_time = 0
         for message in song.tracks[track_index]:
             total_time += message.time
@@ -145,11 +146,14 @@ def song_to_tracks(song: MidiFile, dest: str):
                     channels_dict[message.channel] = (channels_dict[message.channel][0], total_time)
                 except:
                     print(message)
-        for channel in channels_dict:
-            temp_song = MidiFile()
-            temp_song.tracks.append(important_meta_messages + channels_dict[channel][0])
-            temp_song.ticks_per_beat = 480
-            temp_song.save(f'SplitTrackDepot\\{channel}.mid')
+    for channel in channels_dict:
+        temp_song = MidiFile()
+        temp_song.tracks.append(important_meta_messages + channels_dict[channel][0])
+        temp_song.ticks_per_beat = 480  # todo change this with song
+        temp_song.save(f'SplitTrackDepot\\{channel}.mid')
+
+    longest_channel = max(channels_dict, key=lambda channel_index: len(channels_dict[channel_index][0]))
+    return longest_channel
 
 
 # Translates from MIDI note number (0-128) to name with octave and number
@@ -379,7 +383,7 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator):
         print_tab_line(guitar_strings)
 
 
-def main(midi_file, track_num, tuning_offset, capo_offset):
+def main(midi_file, channel_num, tuning_offset, capo_offset):
     # Create guitar index with note keys -- fret-string values
     guitar_index = create_guitar_index(tuning_offset, capo_offset)
 
@@ -390,8 +394,12 @@ def main(midi_file, track_num, tuning_offset, capo_offset):
     time_info_dict = create_time_info_dict(midi_song)
 
     # Split song into tracks for single track translation
-    song_to_tracks(midi_song, 'SplitTrackDepot')
-    track_file = 'SplitTrackDepot/' + str(track_num) + '.mid'
+    longest_channel = song_to_tracks(midi_song, 'SplitTrackDepot')
+
+    if channel_num == -1:
+        channel_num = longest_channel
+
+    track_file = 'SplitTrackDepot/' + str(channel_num) + '.mid'
     single_track = MidiFile(track_file, clip=True).tracks[0]
 
     # Read from the single track and put notes into structures
@@ -409,7 +417,7 @@ def main(midi_file, track_num, tuning_offset, capo_offset):
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
-        main(sys.argv[1], 0, 0, 0)
+        main(sys.argv[1], -1, 0, 0)
     if len(sys.argv) == 3:
         main(sys.argv[1], int(sys.argv[2]), 0, 0)
     elif len(sys.argv) == 5:
@@ -418,5 +426,5 @@ if __name__ == '__main__':
     else:
         print("Usages:")
         print("python3 MidiToTabs.py <midi_file>")
-        print("python3 MidiToTabs.py <midi_file> <track number>")
-        print("python3 MidiToTabs.py <midi_file> <track number> <tuning offset> <capo fret>")
+        print("python3 MidiToTabs.py <midi_file> <channel_number>")
+        print("python3 MidiToTabs.py <midi_file> <channel_number> <tuning_offset> <capo_fret>")

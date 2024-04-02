@@ -117,7 +117,7 @@ def clear_directory(path):
 
 # Splits a given midi song into midi files containing each
 # track separately, saves them in the given destination
-def song_to_tracks(song: MidiFile, destination_dir: str):
+def song_to_tracks(song: MidiFile, destination_dir: str, ticks_per_beat):
     # Clearing Destination of Midi Files
     clear_directory(destination_dir)
 
@@ -149,7 +149,7 @@ def song_to_tracks(song: MidiFile, destination_dir: str):
     for channel in channels_dict:
         temp_song = MidiFile()
         temp_song.tracks.append(important_meta_messages + channels_dict[channel][0])
-        temp_song.ticks_per_beat = 480  # todo change this with song
+        temp_song.ticks_per_beat = ticks_per_beat
         temp_song.save(f'SplitTrackDepot\\{channel}.mid')
 
     longest_channel = max(channels_dict, key=lambda channel_index: len(channels_dict[channel_index][0]))
@@ -395,7 +395,7 @@ def main(midi_file, channel_num, tuning_offset, capo_offset):
     time_info_dict = create_time_info_dict(midi_song)
 
     # Split song into tracks for single track translation
-    longest_channel = song_to_tracks(midi_song, 'SplitTrackDepot')
+    longest_channel = song_to_tracks(midi_song, 'SplitTrackDepot', time_info_dict["ticks_per_beat"])
     if channel_num == -1:
         channel_num = longest_channel
 

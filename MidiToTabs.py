@@ -32,11 +32,6 @@ class Tab:
     guitar_note_list: list
 
 
-# def print_note_range(paired_notes):
-#     paired_notes = sorted(paired_notes, key=lambda x: x[0].note)
-#     print("Min Note: " + str(paired_notes[0][0].note) + ". Max Note: " + str(paired_notes[-1][0].note))
-
-
 # Given tuning and capo offsets, create a dictionary of notes to fret-string combos
 def create_guitar_index(tuning_offset, capo_offset):
     e_string = (64 + capo_offset, 81)

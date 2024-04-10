@@ -19,12 +19,6 @@ class Note:
 
 
 @dataclass
-class PairedNote:
-    note_on: Note
-    note_off: Note
-
-
-@dataclass
 class GuitarNote:
     string_name: str
     string_index: int  # number 0-5, 0 representing the high e string
@@ -203,35 +197,16 @@ def create_notes(single_track, time_info_dict, guitar_range):
                 time_info_dict["tempos"].append((message.tempo, message.time))
             continue
         if message.type == "note_on":
-            if message.note not in range(*guitar_range):
+            note_in_range = guitar_range[0] <= message.note <= guitar_range[1]
+            if note_in_range is False:
                 continue
             temp_note = Note(note_number_to_name(message.note), message.note,
                              True, message.velocity, message.channel, time_seconds,
                              1 + round(4*time_seconds/time_info_dict["seconds_per_beat"]))
             notes_on.append(temp_note)
-        elif message.type == "note_off":
-            if message.note not in range(*guitar_range):
-                continue
-            temp_note = Note(note_number_to_name(message.note), message.note,
-                             False, message.velocity, message.channel, time_seconds,
-                             1 + round(4*time_seconds/time_info_dict["seconds_per_beat"]))
-            notes_off.append(temp_note)
         else:
             pass  # print("Not a Note!")
-    return notes_on, notes_off
-
-
-# Pairs up a note's on and off messages (represented as note
-# objects) into a singular tuple with the on note first and
-# the off note second
-def pair_up_notes(notes_on, notes_off):
-    notes_on = sorted(notes_on, key=lambda note: note.name)
-    notes_off = sorted(notes_off, key=lambda note: note.name)
-    paired_notes = []
-    if len(notes_on) == len(notes_off):
-        for x in range(len(notes_on)):
-            paired_notes.append(PairedNote(notes_on[x], notes_off[x]))
-    return paired_notes
+    return notes_on  # , notes_off
 
 
 # Pick the solution with the lowest avg string value
@@ -279,13 +254,13 @@ def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
     problem = Problem()
 
     variables = []
-    for paired_note in simultaneous_notes:
-        if str(paired_note.note_on.note) not in variables:
-            variables.append(str(paired_note.note_on.note))
-            potential_guitar_notes = copy.deepcopy(guitar_index[paired_note.note_on.note])
+    for cur_note in simultaneous_notes:
+        if str(cur_note.note) not in variables:
+            variables.append(str(cur_note.note))
+            potential_guitar_notes = copy.deepcopy(guitar_index[cur_note.note])
             for guitar_note in potential_guitar_notes:
-                guitar_note.quarter_beat_index = paired_note.note_on.quarter_beat_index
-            problem.addVariable(str(paired_note.note_on.note), potential_guitar_notes)
+                guitar_note.quarter_beat_index = cur_note.quarter_beat_index
+            problem.addVariable(str(cur_note.note), potential_guitar_notes)
 
     for i in range(len(variables)):
         for j in range(i + 1, len(variables)):
@@ -319,26 +294,26 @@ def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
 
 
 # Returns a Tab that has the chosen way to play all notes
-def translate_notes(paired_notes, guitar_index):
+def translate_notes(notes_on, guitar_index):
     guitar_note_list = []
-    paired_notes = sorted(paired_notes, key=lambda x: x.note_on.time)
-    paired_note_index = 0
-    while paired_note_index < len(paired_notes):
-        current_note = paired_notes[paired_note_index]
+    notes_on = sorted(notes_on, key=lambda x: x.time)
+    note_index = 0
+    while note_index < len(notes_on):
+        current_note = notes_on[note_index]
 
         i = 1
-        current_quarter_beat_index = current_note.note_on.quarter_beat_index
+        current_quarter_beat_index = current_note.quarter_beat_index
         simultaneous_notes = [current_note]
-        while paired_note_index + i < len(paired_notes) and \
-                current_quarter_beat_index == paired_notes[paired_note_index + i].note_on.quarter_beat_index:
-            simultaneous_notes.append(paired_notes[paired_note_index + i])
+        while note_index + i < len(notes_on) and \
+                current_quarter_beat_index == notes_on[note_index + i].quarter_beat_index:
+            simultaneous_notes.append(notes_on[note_index + i])
             i += 1
-        paired_note_index += i
+        note_index += i
 
         if len(simultaneous_notes) == 1:
-            guitar_note = guitar_index[current_note.note_on.note][0]
+            guitar_note = guitar_index[current_note.note][0]
             guitar_note_list.append(GuitarNote(guitar_note.string_name, guitar_note.string_index, guitar_note.fret,
-                                               current_note.note_on.time, current_note.note_on.quarter_beat_index))
+                                               current_note.time, current_note.quarter_beat_index))
 
         else:
             playable_notes = optimize_simultaneous_notes(simultaneous_notes, guitar_index)
@@ -416,11 +391,10 @@ def main(midi_file, channel_num, tuning_offset, capo_offset):
     single_track = MidiFile(track_file, clip=True).tracks[0]
 
     # Read from the single track and put notes into structures
-    notes_on, notes_off = create_notes(single_track, time_info_dict, guitar_range)
-    paired_notes = pair_up_notes(notes_on, notes_off)
+    notes_on = create_notes(single_track, time_info_dict, guitar_range)
 
     # Create the list of guitar notes translated from the paired notes we read from the track-file
-    guitar_tab = translate_notes(paired_notes, guitar_index)
+    guitar_tab = translate_notes(notes_on, guitar_index)
 
     # Print the generated tab into expected readable output
     print_tab(guitar_tab, time_info_dict["time_sig_numerator"], time_info_dict["time_sig_denominator"], tuning_offset)

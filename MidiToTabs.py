@@ -139,14 +139,14 @@ def song_to_tracks(song: MidiFile, channel_num):
     if channel_num == -1:
         channel_num = max(channels_dict, key=lambda channel_index: len(channels_dict[channel_index][0]))
 
-    return important_meta_messages + channels_dict[channel_num][0]
-
-    # todo output top 5 channel info to user
+    # clear_directory("SplitTrackDepot")
     # for channel in channels_dict:
     #     temp_song = MidiFile()
     #     temp_song.tracks.append(important_meta_messages + channels_dict[channel][0])
-    #     temp_song.ticks_per_beat = ticks_per_beat
+    #     temp_song.ticks_per_beat = 480
     #     temp_song.save(f'SplitTrackDepot\\{channel}.mid')
+
+    return important_meta_messages + channels_dict[channel_num][0]
 
 
 # Translates from MIDI note number (0-128) to name with octave and number

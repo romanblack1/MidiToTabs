@@ -212,7 +212,6 @@ def note_number_to_name(note_number):
 # Create notes from the given track
 def create_notes(single_track, time_info_dict, guitar_range):
     notes_on = []
-    notes_off = []
     time_counter = 0
     time_seconds = 0
     for message in single_track:
@@ -250,7 +249,7 @@ def create_notes(single_track, time_info_dict, guitar_range):
             notes_on.append(temp_note)
         else:
             pass  # print("Not a Note!")
-    return notes_on  # , notes_off
+    return notes_on
 
 
 # Pick the solution with the lowest avg string value

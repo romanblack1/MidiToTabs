@@ -409,7 +409,8 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator, tuning_offset):
         if time_index > 0 and time_index % quarter_beats_per_measure == 0:
             for guitar_string_index in range(len(guitar_strings)):
                 guitar_strings[guitar_string_index] += "|"
-        if time_index > 0 and time_index % (quarter_beats_per_measure * 6) == 0:
+        if time_index > 0 and time_index % quarter_beats_per_measure == 0 and \
+                len(guitar_strings[0]) + quarter_beats_per_measure > 132:
             print_tab_line(guitar_strings)
             guitar_strings = empty_guitar_strings.copy()
 

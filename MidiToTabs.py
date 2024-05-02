@@ -417,9 +417,6 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator, tuning_offset):
 
 
 def main(midi_file, channel_num, tuning_offset, capo_offset):
-    print(get_channel_info(midi_file))
-    return
-
     # Create guitar index with note keys -- fret-string values
     guitar_index, guitar_range = create_guitar_index(tuning_offset, capo_offset)
 

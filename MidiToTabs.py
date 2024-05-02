@@ -74,7 +74,7 @@ def get_channel_info(midi_file):
     for channel in channels_dict:
         if channel == 9:
             continue
-        non_empty_channels.append((channels_instr[channel], len(channels_dict[channel])))
+        non_empty_channels.append((channels_instr[channel], len(channels_dict[channel]), channel))
 
     returned_channels = sorted(non_empty_channels, key=lambda x: x[1], reverse=True)
     return returned_channels

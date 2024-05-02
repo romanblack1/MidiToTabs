@@ -32,7 +32,7 @@ class Tab:
     guitar_note_list: list
 
 
-def get_channel_info(song: MidiFile):
+def get_channel_info(midi_file):
     instruments = ["Acoustic Grand Piano", "Bright Acoustic Piano", "Electric Grand Piano", "Honky-tonk Piano",
                    "Electric Piano 1", "Electric Piano 2", "Harpsichord", "Clavi", "Celesta", "Glockenspiel",
                    "Music Box", "Vibraphone", "Marimba", "Xylophone", "Tubular Bells", "Dulcimer", "Drawbar Organ",
@@ -58,6 +58,8 @@ def get_channel_info(song: MidiFile):
                    "Seashore", "Bird Tweet", "Telephone Ring", "Helicopter", "Applause", "Gunshot"]
     channels_dict = {}
     channels_instr = {}
+    song = MidiFile(midi_file, clip=True)
+
     for track_index in range(len(song.tracks)):
         total_time = 0
         for message in song.tracks[track_index]:
@@ -71,7 +73,6 @@ def get_channel_info(song: MidiFile):
     non_empty_channels = []
     for channel in channels_dict:
         if channel == 9:
-            non_empty_channels.append(("Drums", channels_dict[channel]))
             continue
         non_empty_channels.append((channels_instr[channel], len(channels_dict[channel])))
 
@@ -416,6 +417,9 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator, tuning_offset):
 
 
 def main(midi_file, channel_num, tuning_offset, capo_offset):
+    print(get_channel_info(midi_file))
+    return
+
     # Create guitar index with note keys -- fret-string values
     guitar_index, guitar_range = create_guitar_index(tuning_offset, capo_offset)
 

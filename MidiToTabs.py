@@ -185,7 +185,8 @@ def song_to_tracks(song: MidiFile, channel_num):
                     print(e)
 
     if channel_num == -1:
-        channels_dict.pop(9)
+        if 9 in channels_dict:
+            channels_dict.pop(9)
         channel_num = max(channels_dict, key=lambda channel_index: len(channels_dict[channel_index][0]))
 
     # clear_directory("SplitTrackDepot")

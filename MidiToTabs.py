@@ -196,7 +196,13 @@ def song_to_tracks(song: MidiFile, channel_num):
     #     temp_song.ticks_per_beat = 480
     #     temp_song.save(f'SplitTrackDepot\\{channel}.mid')
 
-    return important_meta_messages + channels_dict[channel_num][0]
+    if channel_num in channels_dict:
+        return important_meta_messages + channels_dict[channel_num][0]
+    else:
+        print("Invalid channel selected. Here is a list of valid channels:")
+        for key in channels_dict:
+            print(key)
+        exit()
 
 
 # Translates from MIDI note number (0-128) to name with octave and number

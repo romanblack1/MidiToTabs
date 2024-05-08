@@ -82,18 +82,18 @@ def get_channel_info(midi_file):
 
 # Given tuning and capo offsets, create a dictionary of notes to fret-string combos
 def create_guitar_index(tuning_offset, capo_offset):
-    e_string = (64 + capo_offset, 81)
-    b_string = (59 + capo_offset, 76)
-    g_string = (55 + capo_offset, 72)
-    d_string = (50 + capo_offset, 67)
-    a_string = (45 + capo_offset, 62)
+    e_string = (64 + capo_offset, 83)
+    b_string = (59 + capo_offset, 78)
+    g_string = (55 + capo_offset, 74)
+    d_string = (50 + capo_offset, 69)
+    a_string = (45 + capo_offset, 64)
     low_e_string = (40 + capo_offset + tuning_offset, 57 + tuning_offset)
 
     note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
     low_e_string_name = note_names[((40 + tuning_offset) % 12)]
 
     guitar_index = {}
-    for note_num in range(40 + capo_offset + tuning_offset, 82):
+    for note_num in range(low_e_string[0], e_string[1] + 1):
         string_fret_combo = []
         if e_string[0] <= note_num <= e_string[1]:
             string_fret_combo.append(GuitarNote("e", 0, note_num - e_string[0]))
@@ -110,7 +110,7 @@ def create_guitar_index(tuning_offset, capo_offset):
 
         guitar_index[note_num] = string_fret_combo
 
-    return guitar_index, (40 + capo_offset + tuning_offset, 81)
+    return guitar_index, (low_e_string[0], e_string[1])
 
 
 # Captures important info from midi song

@@ -395,10 +395,17 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator, tuning_offset):
     last_beat_index = tab.guitar_note_list[-1].quarter_beat_index
     song_len = last_beat_index + quarter_beats_per_measure - (last_beat_index % quarter_beats_per_measure) + 1
     note_index = 0
+    note_just_played = False
     for time_index in range(1, song_len):
         # to account for fret nums > 2 characters long (10-17), and no notes at this time tick
         max_string_len = len(guitar_strings[0]) + 1
         current_guitar_note = tab.guitar_note_list[note_index] if note_index < len(tab.guitar_note_list) else None
+        if note_just_played:
+            if current_guitar_note and current_guitar_note.quarter_beat_index == time_index:
+                for guitar_string_index in range(len(guitar_strings)):
+                    guitar_strings[guitar_string_index] += "-"
+            note_just_played = False
+
         while current_guitar_note and current_guitar_note.quarter_beat_index == time_index:
             # catches notes on this time tick
             fret = str(current_guitar_note.fret)
@@ -406,6 +413,7 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator, tuning_offset):
             max_string_len = max(max_string_len, len(guitar_strings[current_guitar_note.string_index]))
             note_index += 1
             current_guitar_note = tab.guitar_note_list[note_index] if note_index < len(tab.guitar_note_list) else None
+            note_just_played = True
 
         for guitar_string_index in range(len(guitar_strings)):
             # add dashes to strings that don't have notes at this time tick

@@ -396,6 +396,8 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator, tuning_offset):
     song_len = last_beat_index + quarter_beats_per_measure - (last_beat_index % quarter_beats_per_measure) + 1
     note_index = 0
     note_just_played = False
+    measure_number = 1
+    print(" ", measure_number)
     for time_index in range(1, song_len):
         # to account for fret nums > 2 characters long (10-17), and no notes at this time tick
         max_string_len = len(guitar_strings[0]) + 1
@@ -422,12 +424,14 @@ def print_tab(tab, time_sig_numerator, time_sig_denominator, tuning_offset):
                 guitar_strings[guitar_string_index] += ("-" * num_dashes)
 
         if time_index > 0 and time_index % quarter_beats_per_measure == 0:
+            measure_number += 1
             for guitar_string_index in range(len(guitar_strings)):
                 guitar_strings[guitar_string_index] += "|"
         if time_index > 0 and time_index % quarter_beats_per_measure == 0 and \
                 len(guitar_strings[0]) + quarter_beats_per_measure > 132:
             print_tab_line(guitar_strings)
             guitar_strings = empty_guitar_strings.copy()
+            print(" ", measure_number)
 
     if len(guitar_strings[0]) > 3:
         print_tab_line(guitar_strings)

@@ -257,6 +257,8 @@ def create_notes(single_track, time_info_dict, guitar_range):
             notes_on.append(temp_note)
         else:
             pass  # print("Not a Note!")
+
+    notes_on = sorted(notes_on, key=lambda x: x.quarter_beat_index)
     return notes_on
 
 
@@ -347,7 +349,6 @@ def optimize_simultaneous_notes(simultaneous_notes, guitar_index):
 # Returns a Tab that has the chosen way to play all notes
 def translate_notes(notes_on, guitar_index):
     guitar_note_list = []
-    notes_on = sorted(notes_on, key=lambda x: x.quarter_beat_index)
     note_index = 0
     while note_index < len(notes_on):
         current_note = notes_on[note_index]

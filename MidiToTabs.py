@@ -32,6 +32,8 @@ class Tab:
     guitar_note_list: list
 
 
+# Returns the channels that have notes, sorted by length of channel
+# each returned channel: [instrument_name, channel_legnth, channel_number]
 def get_channel_info(midi_file):
     instruments = ["Acoustic Grand Piano", "Bright Acoustic Piano", "Electric Grand Piano", "Honky-tonk Piano",
                    "Electric Piano 1", "Electric Piano 2", "Harpsichord", "Clavi", "Celesta", "Glockenspiel",
